@@ -15,8 +15,8 @@
       },
       "path": "ActivityLink",
       "category": "MaintenanceId",
-      "url": "https://SEU-DOMINIO.com/fault_dashboard.html",
-      "svgIcon": "https://SEU-DOMINIO.com/fault_dashboard_icon.svg"
+      "url": "https://BrunoFelisbino.github.io/fault_dashboard_addin/fault_dashboard.html",
+      "svgIcon": "https://BrunoFelisbino.github.io/fault_dashboard_addin/fault_dashboard_icon.svg"
     }
   ]
 }
