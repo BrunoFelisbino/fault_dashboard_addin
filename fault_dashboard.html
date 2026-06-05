@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard de Falhas — Frota</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #0d0f12;
+    --surface: #161a1f;
+    --surface2: #1e2329;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #e8eaed;
+    --text2: #8b9099;
+    --text3: #5a6170;
+    --accent: #e84d3d;
+    --accent2: #ff7d6b;
+    --warn: #f5a623;
+    --ok: #2ecc71;
+    --info: #4a9eff;
+    --font: 'IBM Plex Sans', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+    --radius: 8px;
+    --radius2: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
+
+  /* LAYOUT */
+  .app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+  .topbar { display: flex; align-items: center; gap: 16px; padding: 0 20px; height: 54px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .topbar-logo { display: flex; align-items: center; gap: 10px; }
+  .topbar-logo .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .topbar-logo span { font-weight: 600; font-size: 15px; letter-spacing: -0.3px; }
+  .topbar-logo small { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-left: 4px; }
+  .topbar-spacer { flex: 1; }
+  .topbar-badge { font-family: var(--mono); font-size: 11px; color: var(--text2); background: var(--surface2); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); }
+
+  /* FILTERS BAR */
+  .filterbar { display: flex; align-items: center; gap: 10px; padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; }
+  .filter-group { display: flex; align-items: center; gap: 6px; }
+  .filter-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; white-space: nowrap; }
+  .filter-input, .filter-select {
+    background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius);
+    color: var(--text); font-family: var(--font); font-size: 13px; padding: 5px 10px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .filter-input:focus, .filter-select:focus { border-color: var(--info); }
+  .filter-select option { background: var(--surface2); }
+  .filter-sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+  .btn-clear { background: transparent; border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); font-family: var(--font); font-size: 12px; padding: 5px 12px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 5px; }
+  .btn-clear:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-export { background: var(--accent); border: none; border-radius: var(--radius); color: #fff; font-family: var(--font); font-size: 12px; font-weight: 500; padding: 5px 14px; cursor: pointer; transition: opacity 0.2s; display: flex; align-items: center; gap: 5px; }
+  .btn-export:hover { opacity: 0.85; }
+
+  /* MAIN CONTENT */
+  .main { flex: 1; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* KPI CARDS */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+  .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius2); padding: 14px 16px; position: relative; overflow: hidden; transition: border-color 0.2s; }
+  .kpi-card:hover { border-color: var(--border2); }
+  .kpi-card .kpi-accent { position: absolute; top: 0; left: 0; width: 3px; height: 100%; }
+  .kpi-card .kpi-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .kpi-card .kpi-value { font-size: 28px; font-weight: 600; line-height: 1; margin-bottom: 4px; font-family: var(--mono); }
+  .kpi-card .kpi-sub { font-size: 11px; color: var(--text2); }
+  .kpi-card .kpi-icon { position: absolute; right: 14px; top: 14px; font-size: 20px; opacity: 0.2; }
+
+  /* CHARTS ROW */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius2); padding: 16px; }
+  .chart-card.full { grid-column: 1 / -1; }
+  .chart-title { font-size: 12px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+  .chart-wrap { position: relative; }
+
+  /* TABLE */
+  .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius2); overflow: hidden; }
+  .table-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .table-title { font-size: 12px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+  .table-count { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th { padding: 8px 12px; text-align: left; font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; border-bottom: 1px solid var(--border); background: var(--surface2); white-space: nowrap; cursor: pointer; user-select: none; }
+  thead th:hover { color: var(--text); }
+  thead th .sort-icon { margin-left: 4px; opacity: 0.5; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody td { padding: 9px 12px; color: var(--text); white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 20px; font-family: var(--mono); }
+  .badge-red { background: rgba(232,77,61,0.15); color: #ff7d6b; border: 1px solid rgba(232,77,61,0.25); }
+  .badge-warn { background: rgba(245,166,35,0.15); color: #f5a623; border: 1px solid rgba(245,166,35,0.25); }
+  .badge-ok { background: rgba(46,204,113,0.15); color: #2ecc71; border: 1px solid rgba(46,204,113,0.25); }
+  .badge-info { background: rgba(74,158,255,0.15); color: #4a9eff; border: 1px solid rgba(74,158,255,0.25); }
+  .code { font-family: var(--mono); font-size: 11px; color: var(--text2); }
+
+  /* PAGINATION */
+  .pagination { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-top: 1px solid var(--border); }
+  .page-info { font-size: 11px; color: var(--text3); }
+  .page-btns { display: flex; gap: 4px; }
+  .page-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text2); font-size: 12px; padding: 4px 10px; cursor: pointer; transition: all 0.2s; }
+  .page-btn:hover:not(:disabled) { border-color: var(--info); color: var(--info); }
+  .page-btn:disabled { opacity: 0.4; cursor: default; }
+  .page-btn.active { background: var(--info); border-color: var(--info); color: #fff; }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 48px 20px; color: var(--text3); }
+  .empty i { font-size: 32px; display: block; margin-bottom: 10px; }
+
+  /* TOOLTIP */
+  [title] { cursor: help; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-logo">
+      <div class="dot"></div>
+      <span>Fleet Fault Monitor</span>
+      <small>v2.0</small>
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-badge"><i class="ti ti-database" style="font-size:12px; margin-right:4px;"></i><span id="total-count">0</span> registros carregados</div>
+    <label class="btn-export" style="cursor:pointer; position:relative;">
+      <i class="ti ti-upload" style="font-size:14px;"></i> Importar CSV
+      <input type="file" id="csv-upload" accept=".csv,.tsv,.txt" style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer;">
+    </label>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filterbar">
+    <div class="filter-group">
+      <span class="filter-label"><i class="ti ti-search" style="font-size:11px;"></i> Busca</span>
+      <input type="text" class="filter-input" id="search-input" placeholder="Dispositivo, falha, grupo..." style="width:200px;">
+    </div>
+    <div class="filter-sep"></div>
+    <div class="filter-group">
+      <span class="filter-label">Grupo</span>
+      <select class="filter-select" id="filter-group" style="width:160px;"><option value="">Todos</option></select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Falha</span>
+      <select class="filter-select" id="filter-fault" style="width:180px;"><option value="">Todas</option></select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">De</span>
+      <input type="date" class="filter-input" id="date-from">
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Até</span>
+      <input type="date" class="filter-input" id="date-to">
+    </div>
+    <div class="filter-sep"></div>
+    <button class="btn-clear" id="clear-filters"><i class="ti ti-x" style="font-size:12px;"></i> Limpar</button>
+    <div class="topbar-spacer"></div>
+    <button class="btn-export" id="export-btn"><i class="ti ti-download" style="font-size:14px;"></i> Exportar CSV</button>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main" id="main-content">
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-accent" style="background:var(--accent);"></div>
+        <div class="kpi-label">Total de falhas</div>
+        <div class="kpi-value" id="kpi-total" style="color:var(--accent);">—</div>
+        <div class="kpi-sub" id="kpi-total-sub">—</div>
+        <i class="ti ti-alert-triangle kpi-icon" style="color:var(--accent);"></i>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-accent" style="background:var(--warn);"></div>
+        <div class="kpi-label">Dispositivos afetados</div>
+        <div class="kpi-value" id="kpi-devices" style="color:var(--warn);">—</div>
+        <div class="kpi-sub" id="kpi-devices-sub">—</div>
+        <i class="ti ti-car kpi-icon" style="color:var(--warn);"></i>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-accent" style="background:var(--info);"></div>
+        <div class="kpi-label">Tipos de falha</div>
+        <div class="kpi-value" id="kpi-types" style="color:var(--info);">—</div>
+        <div class="kpi-sub" id="kpi-types-sub">—</div>
+        <i class="ti ti-list kpi-icon" style="color:var(--info);"></i>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-accent" style="background:#9b59b6;"></div>
+        <div class="kpi-label">Grupos / Frotas</div>
+        <div class="kpi-value" id="kpi-groups" style="color:#9b59b6;">—</div>
+        <div class="kpi-sub" id="kpi-groups-sub">—</div>
+        <i class="ti ti-layers kpi-icon" style="color:#9b59b6;"></i>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-accent" style="background:var(--ok);"></div>
+        <div class="kpi-label">Falha mais recente</div>
+        <div class="kpi-value" id="kpi-latest" style="font-size:16px; color:var(--ok);">—</div>
+        <div class="kpi-sub" id="kpi-latest-sub">—</div>
+        <i class="ti ti-clock kpi-icon" style="color:var(--ok);"></i>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-accent" style="background:#e67e22;"></div>
+        <div class="kpi-label">Falha mais frequente</div>
+        <div class="kpi-value" id="kpi-top-fault" style="font-size:14px; line-height:1.3; color:#e67e22; padding-top:4px;">—</div>
+        <div class="kpi-sub" id="kpi-top-fault-sub">—</div>
+        <i class="ti ti-flame kpi-icon" style="color:#e67e22;"></i>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title"><i class="ti ti-chart-bar" aria-hidden="true"></i> Falhas por tipo</div>
+        <div class="chart-wrap" style="height:240px;"><canvas id="chart-fault-type" role="img" aria-label="Falhas por tipo"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"><i class="ti ti-chart-pie" aria-hidden="true"></i> Falhas por grupo/frota</div>
+        <div class="chart-wrap" style="height:240px;"><canvas id="chart-by-group" role="img" aria-label="Falhas por grupo"></canvas></div>
+      </div>
+      <div class="chart-card full">
+        <div class="chart-title"><i class="ti ti-timeline" aria-hidden="true"></i> Falhas ao longo do tempo</div>
+        <div class="chart-wrap" style="height:180px;"><canvas id="chart-timeline" role="img" aria-label="Falhas por data"></canvas></div>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-title"><i class="ti ti-table" style="font-size:13px; margin-right:5px;"></i> Registros de falhas</div>
+        <div class="table-count" id="table-count">0 registros</div>
+      </div>
+      <div class="table-wrap">
+        <table id="fault-table">
+          <thead>
+            <tr>
+              <th data-col="DeviceName">Dispositivo <span class="sort-icon">↕</span></th>
+              <th data-col="DeviceId">ID <span class="sort-icon">↕</span></th>
+              <th data-col="FaultDataDateTime">Data/Hora <span class="sort-icon">↕</span></th>
+              <th data-col="DiagnosticName">Tipo de falha <span class="sort-icon">↕</span></th>
+              <th data-col="DiagnosticCode">Código <span class="sort-icon">↕</span></th>
+              <th data-col="DeviceGroup">Grupo <span class="sort-icon">↕</span></th>
+              <th data-col="CompanyGroup">Empresa <span class="sort-icon">↕</span></th>
+            </tr>
+          </thead>
+          <tbody id="fault-tbody"></tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <div class="page-info" id="page-info">—</div>
+        <div class="page-btns" id="page-btns"></div>
+      </div>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div id="empty-state" class="empty">
+      <i class="ti ti-file-upload"></i>
+      <div style="font-size:15px; font-weight:500; color:var(--text2); margin-bottom:6px;">Nenhum dado carregado</div>
+      <div style="font-size:12px;">Importe um arquivo CSV/TSV com os dados de falhas da frota para começar.</div>
+      <div style="font-size:11px; color:var(--text3); margin-top:10px; font-family:var(--mono);">Colunas esperadas: DeviceName · DeviceId · FaultDataDateTime · DiagnosticName · DiagnosticCode · DeviceGroup</div>
+      <button class="btn-export" style="margin:18px auto 0; display:flex;" onclick="document.getElementById('csv-upload').click()">
+        <i class="ti ti-upload" style="font-size:14px;"></i> Importar CSV agora
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ======= DATA =======
+let allData = [];
+let filteredData = [];
+let currentPage = 1;
+const PAGE_SIZE = 15;
+let sortCol = 'FaultDataDateTime';
+let sortDir = -1;
+
+// ======= SAMPLE DATA (fallback) =======
+const SAMPLE = [
+  { DeviceName: 'TEV9A14 | Daily 35/160', DeviceId: 'b2E2D', DeviceComment: '', DeviceGroup: 'Vehicle, Ethanol, LOC_Vamos, SVC_SSP9 - Limeira, Veículo Leve', CompanyGroup: 'Combustão, MLP_BLD LOGÍSTICA', FaultDataDateTime: new Date('2026-05-08T08:11:31'), DiagnosticName: 'GPS failure fault', DiagnosticId: 'aGVFNQX7o7U2mzQPZouNVag', DiagnosticCode: '298' },
+  { DeviceName: 'FLT001 | Sprinter 415', DeviceId: 'c3F4E', DeviceComment: '', DeviceGroup: 'Vehicle, Diesel, LOC_Vamos, SVC_SSP9 - Campinas', CompanyGroup: 'MLP_BLD LOGÍSTICA', FaultDataDateTime: new Date('2026-05-07T14:22:10'), DiagnosticName: 'Engine overheat fault', DiagnosticId: 'bHVGNRY8p8V3nzRQ', DiagnosticCode: '512' },
+  { DeviceName: 'FLT002 | Master 2.3', DeviceId: 'd4G5F', DeviceComment: '', DeviceGroup: 'Vehicle, Diesel, LOC_Vamos, SVC_SSP10 - Limeira', CompanyGroup: 'MLP_BLD LOGÍSTICA', FaultDataDateTime: new Date('2026-05-07T09:05:44'), DiagnosticName: 'GPS failure fault', DiagnosticId: 'aGVFNQX7o7U2mzQPZouNVag', DiagnosticCode: '298' },
+  { DeviceName: 'TEV8B22 | Transit 350', DeviceId: 'e5H6G', DeviceComment: '', DeviceGroup: 'Vehicle, Diesel, LOC_Gol, SVC_SSP8 - SP', CompanyGroup: 'Frota Comercial', FaultDataDateTime: new Date('2026-05-06T17:48:00'), DiagnosticName: 'Battery low voltage fault', DiagnosticId: 'cIWGORZ9q9W4oySR', DiagnosticCode: '101' },
+  { DeviceName: 'TEV7C11 | Ducato 130', DeviceId: 'f6I7H', DeviceComment: '', DeviceGroup: 'Vehicle, Ethanol, LOC_Vamos, SVC_SSP9 - Limeira', CompanyGroup: 'MLP_BLD LOGÍSTICA', FaultDataDateTime: new Date('2026-05-06T11:30:00'), DiagnosticName: 'GPS failure fault', DiagnosticId: 'aGVFNQX7o7U2mzQPZouNVag', DiagnosticCode: '298' },
+  { DeviceName: 'FLT003 | VW 8-150', DeviceId: 'g7J8I', DeviceComment: '', DeviceGroup: 'Vehicle, Diesel, LOC_Gol, SVC_SSP11 - RJ', CompanyGroup: 'Frota Comercial', FaultDataDateTime: new Date('2026-05-05T08:00:00'), DiagnosticName: 'Transmission fault', DiagnosticId: 'dJXHPSa0r0X5pzTS', DiagnosticCode: '773' },
+  { DeviceName: 'FLT004 | HR 2.5', DeviceId: 'h8K9J', DeviceComment: '', DeviceGroup: 'Vehicle, Diesel, LOC_Vamos, SVC_SSP9 - Limeira', CompanyGroup: 'MLP_BLD LOGÍSTICA', FaultDataDateTime: new Date('2026-05-04T16:20:00'), DiagnosticName: 'Engine overheat fault', DiagnosticId: 'bHVGNRY8p8V3nzRQ', DiagnosticCode: '512' },
+  { DeviceName: 'TEV6D44 | Boxer 130', DeviceId: 'i9L0K', DeviceComment: '', DeviceGroup: 'Vehicle, Ethanol, LOC_Gol, SVC_SSP8 - SP', CompanyGroup: 'Frota Comercial', FaultDataDateTime: new Date('2026-05-03T10:10:00'), DiagnosticName: 'Battery low voltage fault', DiagnosticId: 'cIWGORZ9q9W4oySR', DiagnosticCode: '101' },
+  { DeviceName: 'FLT005 | Cargo 1723', DeviceId: 'j0M1L', DeviceComment: '', DeviceGroup: 'Vehicle, Diesel, LOC_Vamos, SVC_SSP9 - Limeira', CompanyGroup: 'MLP_BLD LOGÍSTICA', FaultDataDateTime: new Date('2026-05-02T07:55:00'), DiagnosticName: 'GPS failure fault', DiagnosticId: 'aGVFNQX7o7U2mzQPZouNVag', DiagnosticCode: '298' },
+  { DeviceName: 'TEV5E55 | Iveco 70', DeviceId: 'k1N2M', DeviceComment: '', DeviceGroup: 'Vehicle, Ethanol, LOC_Vamos, SVC_SSP10 - Limeira', CompanyGroup: 'MLP_BLD LOGÍSTICA', FaultDataDateTime: new Date('2026-05-01T14:40:00'), DiagnosticName: 'Door sensor fault', DiagnosticId: 'eKYIPTb1s1Y6qAUT', DiagnosticCode: '405' },
+  { DeviceName: 'FLT006 | Atego 1719', DeviceId: 'l2O3N', DeviceComment: '', DeviceGroup: 'Vehicle, Diesel, LOC_Gol, SVC_SSP11 - RJ', CompanyGroup: 'Frota Comercial', FaultDataDateTime: new Date('2026-04-30T09:15:00'), DiagnosticName: 'Fuel sensor fault', DiagnosticId: 'fLZJQUc2t2Z7rBVU', DiagnosticCode: '614' },
+  { DeviceName: 'TEV4F66 | Daily 50', DeviceId: 'm3P4O', DeviceComment: '', DeviceGroup: 'Vehicle, Ethanol, LOC_Vamos, SVC_SSP9 - Limeira', CompanyGroup: 'MLP_BLD LOGÍSTICA', FaultDataDateTime: new Date('2026-04-29T15:00:00'), DiagnosticName: 'GPS failure fault', DiagnosticId: 'aGVFNQX7o7U2mzQPZouNVag', DiagnosticCode: '298' },
+];
+
+// ======= COLUMN MAP =======
+const COL_MAP = {
+  '.Device.DeviceName': 'DeviceName',
+  'DeviceName': 'DeviceName',
+  '.Device.DeviceId': 'DeviceId',
+  'DeviceId': 'DeviceId',
+  '.Device.DeviceComment': 'DeviceComment',
+  'DeviceComment': 'DeviceComment',
+  '.Device.DeviceGroup': 'DeviceGroup',
+  'DeviceGroup': 'DeviceGroup',
+  '.Device.DeviceGroup|Company Group': 'CompanyGroup',
+  'CompanyGroup': 'CompanyGroup',
+  'FaultDataDateTime': 'FaultDataDateTime',
+  '.Diagnostic.DiagnosticName': 'DiagnosticName',
+  'DiagnosticName': 'DiagnosticName',
+  '.Diagnostic.DiagnosticId': 'DiagnosticId',
+  'DiagnosticId': 'DiagnosticId',
+  '.Diagnostic.DiagnosticCode': 'DiagnosticCode',
+  'DiagnosticCode': 'DiagnosticCode',
+};
+
+// ======= CHART INSTANCES =======
+let chartFaultType = null, chartGroup = null, chartTimeline = null;
+
+// ======= PARSE DATE =======
+function parseDate(str) {
+  if (!str) return null;
+  if (str instanceof Date) return str;
+  // formats: "08/05/2026 8:11:31 a.m." or "2026-05-08T08:11:31" etc.
+  str = String(str).trim();
+  // "DD/MM/YYYY H:MM:SS a.m./p.m."
+  let m = str.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})\s*(a\.m\.|p\.m\.)?/i);
+  if (m) {
+    let h = parseInt(m[4]);
+    const ampm = (m[7] || '').toLowerCase().replace(/\./g,'');
+    if (ampm === 'pm' && h < 12) h += 12;
+    if (ampm === 'am' && h === 12) h = 0;
+    return new Date(+m[3], +m[2]-1, +m[1], h, +m[5], +m[6]);
+  }
+  const d = new Date(str);
+  return isNaN(d) ? null : d;
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+}
+
+// ======= PARSE CSV/TSV =======
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const sep = lines[0].includes('\t') ? '\t' : ',';
+  const headers = lines[0].split(sep).map(h => h.trim().replace(/^"|"$/g,''));
+  const mapped = headers.map(h => COL_MAP[h] || h);
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(sep).map(c => c.trim().replace(/^"|"$/g,''));
+    if (cols.every(c => !c)) continue;
+    const row = {};
+    mapped.forEach((k, idx) => { row[k] = cols[idx] || ''; });
+    row.FaultDataDateTime = parseDate(row.FaultDataDateTime);
+    rows.push(row);
+  }
+  return rows;
+}
+
+// ======= INIT WITH SAMPLE =======
+function loadSample() {
+  allData = SAMPLE;
+  document.getElementById('total-count').textContent = allData.length;
+  populateFilters();
+  applyFilters();
+}
+
+// ======= POPULATE FILTERS =======
+function populateFilters() {
+  const groups = [...new Set(allData.map(r => (r.DeviceGroup || '').split(',')[0].trim()).filter(Boolean))].sort();
+  const faults = [...new Set(allData.map(r => r.DiagnosticName).filter(Boolean))].sort();
+  const gSel = document.getElementById('filter-group');
+  const fSel = document.getElementById('filter-fault');
+  gSel.innerHTML = '<option value="">Todos os grupos</option>' + groups.map(g => `<option value="${g}">${g}</option>`).join('');
+  fSel.innerHTML = '<option value="">Todas as falhas</option>' + faults.map(f => `<option value="${f}">${f}</option>`).join('');
+}
+
+// ======= APPLY FILTERS =======
+function applyFilters() {
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const group = document.getElementById('filter-group').value;
+  const fault = document.getElementById('filter-fault').value;
+  const dateFrom = document.getElementById('date-from').value ? new Date(document.getElementById('date-from').value) : null;
+  const dateTo = document.getElementById('date-to').value ? new Date(document.getElementById('date-to').value + 'T23:59:59') : null;
+
+  filteredData = allData.filter(r => {
+    if (search) {
+      const blob = (r.DeviceName + r.DiagnosticName + r.DeviceGroup + r.CompanyGroup + r.DiagnosticCode).toLowerCase();
+      if (!blob.includes(search)) return false;
+    }
+    if (group && !((r.DeviceGroup || '').includes(group))) return false;
+    if (fault && r.DiagnosticName !== fault) return false;
+    if (dateFrom && r.FaultDataDateTime < dateFrom) return false;
+    if (dateTo && r.FaultDataDateTime > dateTo) return false;
+    return true;
+  });
+
+  // sort
+  filteredData.sort((a, b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (va instanceof Date) return sortDir * (va - vb);
+    return sortDir * String(va||'').localeCompare(String(vb||''));
+  });
+
+  currentPage = 1;
+  updateKPIs();
+  updateCharts();
+  updateTable();
+  document.getElementById('empty-state').style.display = allData.length === 0 ? 'block' : 'none';
+  document.getElementById('main-content').querySelectorAll('.kpi-grid,.charts-row,.table-card').forEach(el => {
+    el.style.display = allData.length === 0 ? 'none' : '';
+  });
+}
+
+// ======= KPIs =======
+function updateKPIs() {
+  const n = filteredData.length;
+  document.getElementById('kpi-total').textContent = n.toLocaleString('pt-BR');
+  document.getElementById('kpi-total-sub').textContent = n !== allData.length ? `de ${allData.length} total` : 'total de registros';
+
+  const devices = new Set(filteredData.map(r => r.DeviceId)).size;
+  document.getElementById('kpi-devices').textContent = devices;
+  document.getElementById('kpi-devices-sub').textContent = `dispositivos únicos`;
+
+  const types = new Set(filteredData.map(r => r.DiagnosticName)).size;
+  document.getElementById('kpi-types').textContent = types;
+  document.getElementById('kpi-types-sub').textContent = `tipos distintos`;
+
+  const groups = new Set(filteredData.map(r => (r.DeviceGroup||'').split(',')[0].trim()).filter(Boolean)).size;
+  document.getElementById('kpi-groups').textContent = groups;
+  document.getElementById('kpi-groups-sub').textContent = `grupos/frotas`;
+
+  const dates = filteredData.map(r => r.FaultDataDateTime).filter(Boolean).sort((a,b)=>b-a);
+  document.getElementById('kpi-latest').textContent = dates[0] ? dates[0].toLocaleDateString('pt-BR') : '—';
+  document.getElementById('kpi-latest-sub').textContent = dates[0] ? dates[0].toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : '';
+
+  const faultCount = {};
+  filteredData.forEach(r => { if(r.DiagnosticName) faultCount[r.DiagnosticName] = (faultCount[r.DiagnosticName]||0)+1; });
+  const topFault = Object.entries(faultCount).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('kpi-top-fault').textContent = topFault ? topFault[0] : '—';
+  document.getElementById('kpi-top-fault-sub').textContent = topFault ? `${topFault[1]} ocorrências` : '';
+}
+
+// ======= CHARTS =======
+const COLORS = ['#e84d3d','#4a9eff','#f5a623','#2ecc71','#9b59b6','#e67e22','#1abc9c','#e74c3c','#3498db','#f39c12'];
+
+function updateCharts() {
+  updateFaultTypeChart();
+  updateGroupChart();
+  updateTimelineChart();
+}
+
+function destroyChart(c) { if (c) { try { c.destroy(); } catch(e){} } }
+
+function updateFaultTypeChart() {
+  const counts = {};
+  filteredData.forEach(r => { if(r.DiagnosticName) counts[r.DiagnosticName] = (counts[r.DiagnosticName]||0)+1; });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  destroyChart(chartFaultType);
+  chartFaultType = new Chart(document.getElementById('chart-fault-type'), {
+    type: 'bar',
+    data: {
+      labels: sorted.map(([k])=>k.length>22?k.slice(0,22)+'…':k),
+      datasets: [{ data: sorted.map(([,v])=>v), backgroundColor: sorted.map((_,i)=>COLORS[i%COLORS.length]+'cc'), borderRadius: 4, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { title: (i)=>sorted[i[0].dataIndex][0] } } },
+      scales: {
+        x: { ticks: { color:'#8b9099', font:{size:10} }, grid: { color:'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color:'#8b9099', font:{size:10} }, grid: { display:false } }
+      }
+    }
+  });
+}
+
+function updateGroupChart() {
+  const counts = {};
+  filteredData.forEach(r => {
+    const g = (r.DeviceGroup||'').split(',')[0].trim() || 'Sem grupo';
+    counts[g] = (counts[g]||0)+1;
+  });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  destroyChart(chartGroup);
+  chartGroup = new Chart(document.getElementById('chart-by-group'), {
+    type: 'doughnut',
+    data: {
+      labels: sorted.map(([k])=>k.length>20?k.slice(0,20)+'…':k),
+      datasets: [{ data: sorted.map(([,v])=>v), backgroundColor: sorted.map((_,i)=>COLORS[i%COLORS.length]+'cc'), borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: {
+        legend: { position: 'right', labels: { color:'#8b9099', font:{size:10}, boxWidth:10, padding:8 } }
+      }
+    }
+  });
+}
+
+function updateTimelineChart() {
+  const byDay = {};
+  filteredData.forEach(r => {
+    if (!r.FaultDataDateTime) return;
+    const d = r.FaultDataDateTime.toISOString().slice(0,10);
+    byDay[d] = (byDay[d]||0)+1;
+  });
+  const sorted = Object.entries(byDay).sort(([a],[b])=>a.localeCompare(b));
+  destroyChart(chartTimeline);
+  chartTimeline = new Chart(document.getElementById('chart-timeline'), {
+    type: 'line',
+    data: {
+      labels: sorted.map(([d]) => new Date(d+'T12:00:00').toLocaleDateString('pt-BR', {day:'2-digit',month:'short'})),
+      datasets: [{
+        data: sorted.map(([,v])=>v),
+        borderColor: '#4a9eff', backgroundColor: 'rgba(74,158,255,0.08)',
+        fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor:'#4a9eff', borderWidth: 1.5
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color:'#8b9099', font:{size:10}, maxRotation:45 }, grid: { color:'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color:'#8b9099', font:{size:10} }, grid: { color:'rgba(255,255,255,0.05)' }, beginAtZero:true }
+      }
+    }
+  });
+}
+
+// ======= TABLE =======
+function updateTable() {
+  const tbody = document.getElementById('fault-tbody');
+  const total = filteredData.length;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (currentPage > pages) currentPage = pages;
+  const start = (currentPage-1)*PAGE_SIZE;
+  const slice = filteredData.slice(start, start+PAGE_SIZE);
+
+  if (slice.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3);"><i class="ti ti-search-off" style="font-size:20px;display:block;margin-bottom:8px;"></i>Nenhum registro encontrado</td></tr>`;
+  } else {
+    tbody.innerHTML = slice.map(r => {
+      const code = r.DiagnosticCode || '—';
+      const severity = parseInt(code) > 500 ? 'red' : parseInt(code) > 300 ? 'warn' : 'info';
+      const groups = (r.DeviceGroup||'').split(',').slice(0,2).map(g=>g.trim()).join(', ');
+      return `<tr>
+        <td title="${r.DeviceName||''}">${r.DeviceName||'—'}</td>
+        <td><span class="code">${r.DeviceId||'—'}</span></td>
+        <td>${fmtDate(r.FaultDataDateTime)}</td>
+        <td><span class="badge badge-${severity}">${r.DiagnosticName||'—'}</span></td>
+        <td><span class="code">${code}</span></td>
+        <td title="${r.DeviceGroup||''}" style="max-width:160px;">${groups||'—'}</td>
+        <td title="${r.CompanyGroup||''}">${(r.CompanyGroup||'').split(',')[0].trim()||'—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  document.getElementById('table-count').textContent = `${total.toLocaleString('pt-BR')} registro${total!==1?'s':''}`;
+  document.getElementById('page-info').textContent = `${start+1}–${Math.min(start+PAGE_SIZE,total)} de ${total}`;
+  renderPagination(pages);
+}
+
+function renderPagination(pages) {
+  const el = document.getElementById('page-btns');
+  let btns = '';
+  btns += `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}><i class="ti ti-chevron-left" style="font-size:12px;"></i></button>`;
+  const range = [];
+  if (pages <= 7) { for(let i=1;i<=pages;i++) range.push(i); }
+  else {
+    range.push(1);
+    if (currentPage > 3) range.push('…');
+    for(let i=Math.max(2,currentPage-1);i<=Math.min(pages-1,currentPage+1);i++) range.push(i);
+    if (currentPage < pages-2) range.push('…');
+    range.push(pages);
+  }
+  range.forEach(p => {
+    if (p === '…') btns += `<button class="page-btn" disabled>…</button>`;
+    else btns += `<button class="page-btn ${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`;
+  });
+  btns += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===pages?'disabled':''}><i class="ti ti-chevron-right" style="font-size:12px;"></i></button>`;
+  el.innerHTML = btns;
+}
+
+function goPage(p) {
+  const pages = Math.ceil(filteredData.length/PAGE_SIZE);
+  if (p < 1 || p > pages) return;
+  currentPage = p;
+  updateTable();
+}
+
+// ======= SORT =======
+document.querySelectorAll('thead th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = -1; }
+    applyFilters();
+    document.querySelectorAll('thead th .sort-icon').forEach(s => s.textContent = '↕');
+    th.querySelector('.sort-icon').textContent = sortDir === 1 ? '↑' : '↓';
+  });
+});
+
+// ======= FILTER EVENTS =======
+['search-input','filter-group','filter-fault','date-from','date-to'].forEach(id => {
+  document.getElementById(id).addEventListener('input', applyFilters);
+  document.getElementById(id).addEventListener('change', applyFilters);
+});
+document.getElementById('clear-filters').addEventListener('click', () => {
+  document.getElementById('search-input').value = '';
+  document.getElementById('filter-group').value = '';
+  document.getElementById('filter-fault').value = '';
+  document.getElementById('date-from').value = '';
+  document.getElementById('date-to').value = '';
+  applyFilters();
+});
+
+// ======= FILE IMPORT =======
+document.getElementById('csv-upload').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const rows = parseCSV(ev.target.result);
+    if (rows.length === 0) { alert('Nenhum dado encontrado no arquivo. Verifique o formato.'); return; }
+    allData = rows;
+    document.getElementById('total-count').textContent = allData.length;
+    populateFilters();
+    applyFilters();
+  };
+  reader.readAsText(file, 'UTF-8');
+  e.target.value = '';
+});
+
+// ======= EXPORT =======
+document.getElementById('export-btn').addEventListener('click', () => {
+  if (!filteredData.length) return;
+  const cols = ['DeviceName','DeviceId','FaultDataDateTime','DiagnosticName','DiagnosticCode','DeviceGroup','CompanyGroup'];
+  const header = cols.join('\t');
+  const rows = filteredData.map(r => cols.map(c => {
+    const v = c === 'FaultDataDateTime' ? fmtDate(r[c]) : (r[c]||'');
+    return v.includes('\t') ? `"${v}"` : v;
+  }).join('\t'));
+  const blob = new Blob([header + '\n' + rows.join('\n')], {type:'text/tab-separated-values'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `falhas_${new Date().toISOString().slice(0,10)}.tsv`;
+  a.click();
+});
+
+// ======= BOOT =======
+loadSample();
+</script>
+</body>
+</html>

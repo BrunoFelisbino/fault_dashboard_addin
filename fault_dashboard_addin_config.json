@@ -1,0 +1,22 @@
+{
+  "name": "Dashboard de Falhas — Frota",
+  "supportEmail": "seu-email@empresa.com",
+  "version": "1.0.0",
+  "items": [
+    {
+      "page": "map",
+      "title": {
+        "pt-BR": "Dashboard de Falhas",
+        "en": "Fault Dashboard"
+      },
+      "menuName": {
+        "pt-BR": "Dashboard de Falhas",
+        "en": "Fault Dashboard"
+      },
+      "path": "ActivityLink",
+      "category": "MaintenanceId",
+      "url": "https://SEU-DOMINIO.com/fault_dashboard.html",
+      "svgIcon": "https://SEU-DOMINIO.com/fault_dashboard_icon.svg"
+    }
+  ]
+}
