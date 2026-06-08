@@ -10,12 +10,12 @@
 <script>
 (function(){
   var s=document.createElement('style');
-  s.textContent='html,body,#app,[id*="addin"],[class*="addin"],#geotab-addin-container{background:#ffffff!important;background-color:#ffffff!important;}';
+  s.textContent='html,body,#app,[id*="addin"],[class*="addin"],#geotab-addin-container{background:#0a0e14!important;background-color:#0a0e14!important;color:#e6edf3!important;}';
   document.head?document.head.appendChild(s):document.addEventListener('DOMContentLoaded',function(){document.head.appendChild(s);});
   try{
-    document.documentElement.style.setProperty('background','#ffffff','important');
-    document.documentElement.style.setProperty('background-color','#ffffff','important');
-    document.body&&document.body.style.setProperty('background','#ffffff','important');
+    document.documentElement.style.setProperty('background','#0a0e14','important');
+    document.documentElement.style.setProperty('background-color','#0a0e14','important');
+    document.body&&document.body.style.setProperty('background','#0a0e14','important');
   }catch(e){}
 })();
 </script>
@@ -26,8 +26,8 @@
   html, body, #app,
   [id*="addin"], [class*="addin"],
   #geotab-addin-container {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
+    background: #0a0e14 !important;
+    background-color: #0a0e14 !important;
   }
 
   :root {
