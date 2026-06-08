@@ -3,854 +3,717 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard de Falhas — Frota</title>
+<title>Dashboard de Falhas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
   :root {
-    --bg: #0d0f12;
+    --bg:      #0d0f12;
     --surface: #161a1f;
-    --surface2: #1e2329;
-    --border: rgba(255,255,255,0.08);
+    --surface2:#1e2329;
+    --border:  rgba(255,255,255,0.08);
     --border2: rgba(255,255,255,0.14);
-    --text: #e8eaed;
-    --text2: #8b9099;
-    --text3: #5a6170;
-    --accent: #e84d3d;
-    --accent2: #ff7d6b;
-    --warn: #f5a623;
-    --ok: #2ecc71;
-    --info: #4a9eff;
-    --font: 'IBM Plex Sans', sans-serif;
-    --mono: 'IBM Plex Mono', monospace;
-    --radius: 8px;
-    --radius2: 12px;
+    --text:    #e8eaed;
+    --text2:   #8b9099;
+    --text3:   #5a6170;
+    --accent:  #e84d3d;
+    --warn:    #f5a623;
+    --ok:      #2ecc71;
+    --info:    #4a9eff;
+    --font:    'IBM Plex Sans', sans-serif;
+    --mono:    'IBM Plex Mono', monospace;
+    --r:       8px;
+    --r2:      12px;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
 
-  /* LAYOUT */
-  .app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-  .topbar { display: flex; align-items: center; gap: 16px; padding: 0 20px; height: 54px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .topbar-logo { display: flex; align-items: center; gap: 10px; }
-  .topbar-logo .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-  .topbar-logo span { font-weight: 600; font-size: 15px; letter-spacing: -0.3px; }
-  .topbar-logo small { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-left: 4px; }
-  .topbar-spacer { flex: 1; }
-  .topbar-badge { font-family: var(--mono); font-size: 11px; color: var(--text2); background: var(--surface2); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); }
+  /* RESET — garante que o add-in controla seu próprio espaço */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* FILTERS BAR */
-  .filterbar { display: flex; align-items: center; gap: 10px; padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; }
-  .filter-group { display: flex; align-items: center; gap: 6px; }
-  .filter-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; white-space: nowrap; }
-  .filter-input, .filter-select {
-    background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius);
-    color: var(--text); font-family: var(--font); font-size: 13px; padding: 5px 10px; outline: none;
-    transition: border-color 0.2s;
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    /* NÃO usar height:100vh — o iframe não tem altura fixa no Geotab */
+    min-height: 100%;
+    width: 100%;
   }
-  .filter-input:focus, .filter-select:focus { border-color: var(--info); }
-  .filter-select option { background: var(--surface2); }
-  .filter-sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
 
-  .btn { border-radius: var(--radius); font-family: var(--font); font-size: 12px; font-weight: 500; padding: 6px 14px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 5px; border: none; }
-  .btn-primary { background: var(--info); color: #fff; }
-  .btn-primary:hover { opacity: 0.85; }
-  .btn-primary:disabled { opacity: 0.4; cursor: default; }
-  .btn-secondary { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
-  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
-  .btn-export { background: var(--accent); border: none; border-radius: var(--radius); color: #fff; font-family: var(--font); font-size: 12px; font-weight: 500; padding: 5px 14px; cursor: pointer; transition: opacity 0.2s; display: flex; align-items: center; gap: 5px; }
-  .btn-export:hover { opacity: 0.85; }
-  .btn-export:disabled { opacity: 0.4; cursor: default; }
+  /* WRAPPER principal — scroll normal, sem flex height fixed */
+  #app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding-bottom: 32px;
+  }
 
-  /* PRESETS */
-  .preset-btns { display: flex; gap: 4px; }
-  .preset-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text2); font-size: 11px; font-family: var(--mono); padding: 4px 9px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-  .preset-btn:hover { border-color: var(--info); color: var(--info); }
-  .preset-btn.active { background: rgba(74,158,255,0.15); border-color: var(--info); color: var(--info); }
+  /* ── TOPBAR ── */
+  .topbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 20px; height: 52px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display:flex; align-items:center; gap:8px; }
+  .logo .dot { width:8px; height:8px; border-radius:50%; background:var(--accent); animation:pulse 2s infinite; }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .logo span { font-weight:600; font-size:14px; }
+  .logo small { font-size:10px; color:var(--text3); font-family:var(--mono); }
+  .spacer { flex:1; }
+  .badge {
+    font-family:var(--mono); font-size:11px; color:var(--text2);
+    background:var(--surface2); padding:3px 10px;
+    border-radius:20px; border:1px solid var(--border);
+  }
 
-  /* MAIN CONTENT */
-  .main { flex: 1; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
+  /* ── FILTERBAR ── */
+  .filterbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    position: sticky; top: 52px; z-index: 99;
+  }
+  .flabel { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; white-space:nowrap; }
+  .finput, .fselect {
+    background:var(--surface2); border:1px solid var(--border2);
+    border-radius:var(--r); color:var(--text);
+    font-family:var(--font); font-size:13px;
+    padding:5px 10px; outline:none; transition:border-color .2s;
+  }
+  .finput:focus,.fselect:focus{ border-color:var(--info); }
+  .fselect option { background:var(--surface2); }
+  .fsep { width:1px; height:22px; background:var(--border); }
 
-  /* KPI CARDS */
-  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
-  .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius2); padding: 14px 16px; position: relative; overflow: hidden; transition: border-color 0.2s; }
-  .kpi-card:hover { border-color: var(--border2); }
-  .kpi-card .kpi-accent { position: absolute; top: 0; left: 0; width: 3px; height: 100%; }
-  .kpi-card .kpi-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-  .kpi-card .kpi-value { font-size: 28px; font-weight: 600; line-height: 1; margin-bottom: 4px; font-family: var(--mono); }
-  .kpi-card .kpi-sub { font-size: 11px; color: var(--text2); }
-  .kpi-card .kpi-icon { position: absolute; right: 14px; top: 14px; font-size: 20px; opacity: 0.2; }
+  /* Preset buttons */
+  .presets { display:flex; gap:3px; }
+  .pbtn {
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:6px; color:var(--text2); font-size:11px;
+    font-family:var(--mono); padding:4px 9px; cursor:pointer;
+    transition:all .15s; white-space:nowrap;
+  }
+  .pbtn:hover  { border-color:var(--info); color:var(--info); }
+  .pbtn.active { background:rgba(74,158,255,.15); border-color:var(--info); color:var(--info); }
 
-  /* CHARTS ROW */
-  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius2); padding: 16px; }
-  .chart-card.full { grid-column: 1 / -1; }
-  .chart-title { font-size: 12px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
-  .chart-wrap { position: relative; }
+  /* Buttons */
+  .btn {
+    display:inline-flex; align-items:center; gap:5px;
+    border-radius:var(--r); font-family:var(--font);
+    font-size:12px; font-weight:500; padding:6px 14px;
+    cursor:pointer; transition:all .2s; border:none;
+  }
+  .btn-blue { background:var(--info); color:#fff; }
+  .btn-blue:hover { opacity:.85; }
+  .btn-blue:disabled { opacity:.4; cursor:default; }
+  .btn-ghost { background:transparent; border:1px solid var(--border2); color:var(--text2); }
+  .btn-ghost:hover { border-color:var(--accent); color:var(--accent); }
+  .btn-red { background:var(--accent); color:#fff; }
+  .btn-red:hover { opacity:.85; }
+  .btn-red:disabled { opacity:.4; cursor:default; }
 
-  /* TABLE */
-  .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius2); overflow: hidden; }
-  .table-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
-  .table-title { font-size: 12px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
-  .table-count { font-size: 11px; color: var(--text3); font-family: var(--mono); }
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  thead th { padding: 8px 12px; text-align: left; font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; border-bottom: 1px solid var(--border); background: var(--surface2); white-space: nowrap; cursor: pointer; user-select: none; }
-  thead th:hover { color: var(--text); }
-  thead th .sort-icon { margin-left: 4px; opacity: 0.5; }
-  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
-  tbody tr:hover { background: var(--surface2); }
-  tbody tr:last-child { border-bottom: none; }
-  tbody td { padding: 9px 12px; color: var(--text); white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
-  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 20px; font-family: var(--mono); }
-  .badge-red   { background: rgba(232,77,61,0.15);  color: #ff7d6b; border: 1px solid rgba(232,77,61,0.25); }
-  .badge-warn  { background: rgba(245,166,35,0.15); color: #f5a623; border: 1px solid rgba(245,166,35,0.25); }
-  .badge-ok    { background: rgba(46,204,113,0.15); color: #2ecc71; border: 1px solid rgba(46,204,113,0.25); }
-  .badge-info  { background: rgba(74,158,255,0.15); color: #4a9eff; border: 1px solid rgba(74,158,255,0.25); }
-  .code { font-family: var(--mono); font-size: 11px; color: var(--text2); }
+  /* ── CONTENT ── */
+  .content { padding:18px 20px; display:flex; flex-direction:column; gap:14px; }
 
-  /* PAGINATION */
-  .pagination { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-top: 1px solid var(--border); }
-  .page-info { font-size: 11px; color: var(--text3); }
-  .page-btns { display: flex; gap: 4px; }
-  .page-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text2); font-size: 12px; padding: 4px 10px; cursor: pointer; transition: all 0.2s; }
-  .page-btn:hover:not(:disabled) { border-color: var(--info); color: var(--info); }
-  .page-btn:disabled { opacity: 0.4; cursor: default; }
-  .page-btn.active { background: var(--info); border-color: var(--info); color: #fff; }
+  /* ── KPIs ── */
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:10px; }
+  .kpi {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--r2); padding:14px 16px;
+    position:relative; overflow:hidden;
+  }
+  .kpi-bar { position:absolute; top:0; left:0; width:3px; height:100%; }
+  .kpi-lbl { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
+  .kpi-val { font-size:26px; font-weight:600; line-height:1; font-family:var(--mono); margin-bottom:3px; }
+  .kpi-sub { font-size:11px; color:var(--text2); }
+  .kpi-ico { position:absolute; right:14px; top:14px; font-size:20px; opacity:.18; }
 
-  /* LOADING / EMPTY / ERROR */
-  .state-box { text-align: center; padding: 56px 20px; color: var(--text3); }
-  .state-box i { font-size: 36px; display: block; margin-bottom: 12px; }
-  .state-box .state-title { font-size: 15px; font-weight: 500; color: var(--text2); margin-bottom: 6px; }
-  .state-box .state-sub { font-size: 12px; line-height: 1.6; }
-  .spinner { width: 36px; height: 36px; border: 3px solid var(--border2); border-top-color: var(--info); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 14px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  /* ── CHARTS ── */
+  .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .chart-box {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--r2); padding:16px;
+  }
+  .chart-box.wide { grid-column:1/-1; }
+  .chart-lbl { font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px; display:flex; align-items:center; gap:5px; }
 
-  /* SCROLLBAR */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  /* ── TABLE ── */
+  .tcard {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--r2); overflow:hidden;
+  }
+  .thead-bar { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid var(--border); }
+  .thead-lbl { font-size:11px; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; }
+  .thead-cnt { font-size:11px; color:var(--text3); font-family:var(--mono); }
+  .twrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  thead th {
+    padding:7px 12px; text-align:left; font-size:10px; color:var(--text3);
+    text-transform:uppercase; letter-spacing:.5px; font-weight:500;
+    border-bottom:1px solid var(--border); background:var(--surface2);
+    white-space:nowrap; cursor:pointer; user-select:none;
+  }
+  thead th:hover { color:var(--text); }
+  .si { margin-left:3px; opacity:.5; }
+  tbody tr { border-bottom:1px solid var(--border); }
+  tbody tr:hover { background:var(--surface2); }
+  tbody tr:last-child { border-bottom:none; }
+  tbody td { padding:8px 12px; white-space:nowrap; max-width:200px; overflow:hidden; text-overflow:ellipsis; vertical-align:middle; }
+  .bdg { display:inline-flex; align-items:center; font-size:10px; font-weight:500; padding:2px 8px; border-radius:20px; font-family:var(--mono); }
+  .bdg-r  { background:rgba(232,77,61,.15);  color:#ff7d6b; border:1px solid rgba(232,77,61,.25); }
+  .bdg-w  { background:rgba(245,166,35,.15); color:#f5a623; border:1px solid rgba(245,166,35,.25); }
+  .bdg-i  { background:rgba(74,158,255,.15); color:#4a9eff; border:1px solid rgba(74,158,255,.25); }
+  .code   { font-family:var(--mono); font-size:11px; color:var(--text2); }
+
+  /* pagination */
+  .pag { display:flex; align-items:center; justify-content:space-between; padding:9px 16px; border-top:1px solid var(--border); }
+  .pag-info { font-size:11px; color:var(--text3); }
+  .pag-btns { display:flex; gap:3px; }
+  .pbtn2 { background:var(--surface2); border:1px solid var(--border); border-radius:5px; color:var(--text2); font-size:12px; padding:3px 9px; cursor:pointer; }
+  .pbtn2:hover:not(:disabled){ border-color:var(--info); color:var(--info); }
+  .pbtn2:disabled { opacity:.4; cursor:default; }
+  .pbtn2.on { background:var(--info); border-color:var(--info); color:#fff; }
+
+  /* ── STATES ── */
+  .statebox { text-align:center; padding:60px 24px; color:var(--text3); }
+  .statebox i { font-size:38px; display:block; margin-bottom:12px; }
+  .statebox .st { font-size:15px; font-weight:500; color:var(--text2); margin-bottom:6px; }
+  .statebox .ss { font-size:12px; line-height:1.7; }
+  .spin { width:36px; height:36px; border:3px solid var(--border2); border-top-color:var(--info); border-radius:50%; animation:spin .75s linear infinite; margin:0 auto 14px; }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* scrollbar */
+  ::-webkit-scrollbar{width:5px;height:5px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 </style>
 </head>
 <body>
-<div class="app">
+<div id="app">
 
-  <!-- TOP BAR -->
+  <!-- TOPBAR -->
   <div class="topbar">
-    <div class="topbar-logo">
+    <div class="logo">
       <div class="dot"></div>
       <span>Fleet Fault Monitor</span>
-      <small>v3.0</small>
+      <small>v3.1</small>
     </div>
-    <div class="topbar-spacer"></div>
-    <div class="topbar-badge" id="session-badge">
-      <i class="ti ti-database" style="font-size:12px; margin-right:4px;"></i>
+    <div class="spacer"></div>
+    <div class="badge" id="badge-count">
+      <i class="ti ti-database" style="font-size:11px;margin-right:4px;"></i>
       <span id="total-count">—</span> registros
     </div>
-    <button class="btn-export" id="export-btn" disabled>
-      <i class="ti ti-download" style="font-size:14px;"></i> Exportar TSV
+    <button class="btn btn-red" id="btn-export" disabled>
+      <i class="ti ti-download" style="font-size:13px;"></i> Exportar TSV
     </button>
   </div>
 
-  <!-- FILTER BAR -->
+  <!-- FILTERBAR -->
   <div class="filterbar">
-
-    <!-- PRESETS DE PERÍODO -->
-    <div class="filter-group">
-      <span class="filter-label"><i class="ti ti-calendar" style="font-size:11px;"></i> Período</span>
-      <div class="preset-btns">
-        <button class="preset-btn" data-preset="today">Hoje</button>
-        <button class="preset-btn" data-preset="7d">7 dias</button>
-        <button class="preset-btn active" data-preset="30d">30 dias</button>
-        <button class="preset-btn" data-preset="90d">90 dias</button>
-        <button class="preset-btn" data-preset="custom">Personalizado</button>
-      </div>
+    <!-- período -->
+    <span class="flabel">Período</span>
+    <div class="presets">
+      <button class="pbtn" data-p="today">Hoje</button>
+      <button class="pbtn" data-p="7d">7 dias</button>
+      <button class="pbtn active" data-p="30d">30 dias</button>
+      <button class="pbtn" data-p="90d">90 dias</button>
+      <button class="pbtn" data-p="custom">Personalizado</button>
     </div>
-
-    <!-- DATAS (apenas visíveis em "custom") -->
-    <div class="filter-group" id="custom-dates" style="display:none;">
-      <span class="filter-label">De</span>
-      <input type="date" class="filter-input" id="date-from">
-      <span class="filter-label">Até</span>
-      <input type="date" class="filter-input" id="date-to">
+    <div id="custom-dates" style="display:none;align-items:center;gap:6px;">
+      <input type="date" class="finput" id="date-from">
+      <span class="flabel">até</span>
+      <input type="date" class="finput" id="date-to">
     </div>
-
-    <div class="filter-sep"></div>
-
-    <!-- FILTRO DE VEÍCULO -->
-    <div class="filter-group">
-      <span class="filter-label"><i class="ti ti-car" style="font-size:11px;"></i> Veículo</span>
-      <select class="filter-select" id="filter-device" style="width:200px;">
-        <option value="">Todos</option>
-      </select>
-    </div>
-
-    <div class="filter-sep"></div>
-
-    <!-- BUSCAR -->
-    <button class="btn btn-primary" id="btn-fetch">
+    <div class="fsep"></div>
+    <!-- veículo -->
+    <span class="flabel">Veículo</span>
+    <select class="fselect" id="sel-device" style="min-width:180px;max-width:260px;">
+      <option value="">Todos</option>
+    </select>
+    <button class="btn btn-blue" id="btn-fetch">
       <i class="ti ti-refresh" style="font-size:13px;"></i> Buscar dados
     </button>
-
-    <div class="topbar-spacer"></div>
-
-    <!-- FILTROS LOCAIS (pós-busca) -->
-    <div class="filter-group">
-      <span class="filter-label"><i class="ti ti-search" style="font-size:11px;"></i> Filtrar</span>
-      <input type="text" class="filter-input" id="search-input" placeholder="Dispositivo, falha, código..." style="width:200px;">
-    </div>
-    <div class="filter-group">
-      <select class="filter-select" id="filter-fault" style="width:180px;">
-        <option value="">Todas as falhas</option>
-      </select>
-    </div>
-    <button class="btn btn-secondary" id="clear-filters">
+    <div class="fsep"></div>
+    <!-- filtros locais -->
+    <input type="text" class="finput" id="inp-search" placeholder="Dispositivo, falha, código..." style="width:200px;">
+    <select class="fselect" id="sel-fault" style="min-width:160px;">
+      <option value="">Todas as falhas</option>
+    </select>
+    <button class="btn btn-ghost" id="btn-clear">
       <i class="ti ti-x" style="font-size:12px;"></i> Limpar
     </button>
-
   </div>
 
-  <!-- MAIN -->
-  <div class="main" id="main-content">
+  <!-- CONTENT -->
+  <div class="content" id="content">
 
-    <!-- KPIs (ocultos até ter dados) -->
+    <!-- KPIs -->
     <div class="kpi-grid" id="kpi-grid" style="display:none;">
-      <div class="kpi-card">
-        <div class="kpi-accent" style="background:var(--accent);"></div>
-        <div class="kpi-label">Total de falhas</div>
-        <div class="kpi-value" id="kpi-total" style="color:var(--accent);">—</div>
-        <div class="kpi-sub" id="kpi-total-sub">—</div>
-        <i class="ti ti-alert-triangle kpi-icon" style="color:var(--accent);"></i>
+      <div class="kpi">
+        <div class="kpi-bar" style="background:var(--accent);"></div>
+        <div class="kpi-lbl">Total de falhas</div>
+        <div class="kpi-val" id="kv-total" style="color:var(--accent);">—</div>
+        <div class="kpi-sub" id="ks-total">—</div>
+        <i class="ti ti-alert-triangle kpi-ico" style="color:var(--accent);"></i>
       </div>
-      <div class="kpi-card">
-        <div class="kpi-accent" style="background:var(--warn);"></div>
-        <div class="kpi-label">Dispositivos afetados</div>
-        <div class="kpi-value" id="kpi-devices" style="color:var(--warn);">—</div>
-        <div class="kpi-sub" id="kpi-devices-sub">—</div>
-        <i class="ti ti-car kpi-icon" style="color:var(--warn);"></i>
+      <div class="kpi">
+        <div class="kpi-bar" style="background:var(--warn);"></div>
+        <div class="kpi-lbl">Veículos afetados</div>
+        <div class="kpi-val" id="kv-dev" style="color:var(--warn);">—</div>
+        <div class="kpi-sub" id="ks-dev">dispositivos únicos</div>
+        <i class="ti ti-car kpi-ico" style="color:var(--warn);"></i>
       </div>
-      <div class="kpi-card">
-        <div class="kpi-accent" style="background:var(--info);"></div>
-        <div class="kpi-label">Tipos de falha</div>
-        <div class="kpi-value" id="kpi-types" style="color:var(--info);">—</div>
-        <div class="kpi-sub" id="kpi-types-sub">—</div>
-        <i class="ti ti-list kpi-icon" style="color:var(--info);"></i>
+      <div class="kpi">
+        <div class="kpi-bar" style="background:var(--info);"></div>
+        <div class="kpi-lbl">Tipos de falha</div>
+        <div class="kpi-val" id="kv-types" style="color:var(--info);">—</div>
+        <div class="kpi-sub" id="ks-types">tipos distintos</div>
+        <i class="ti ti-list kpi-ico" style="color:var(--info);"></i>
       </div>
-      <div class="kpi-card">
-        <div class="kpi-accent" style="background:#9b59b6;"></div>
-        <div class="kpi-label">Falha mais recente</div>
-        <div class="kpi-value" id="kpi-latest" style="font-size:16px; color:#9b59b6;">—</div>
-        <div class="kpi-sub" id="kpi-latest-sub">—</div>
-        <i class="ti ti-clock kpi-icon" style="color:#9b59b6;"></i>
+      <div class="kpi">
+        <div class="kpi-bar" style="background:#9b59b6;"></div>
+        <div class="kpi-lbl">Falha mais recente</div>
+        <div class="kpi-val" id="kv-latest" style="font-size:16px;color:#9b59b6;">—</div>
+        <div class="kpi-sub" id="ks-latest">—</div>
+        <i class="ti ti-clock kpi-ico" style="color:#9b59b6;"></i>
       </div>
-      <div class="kpi-card">
-        <div class="kpi-accent" style="background:var(--ok);"></div>
-        <div class="kpi-label">Falha mais frequente</div>
-        <div class="kpi-value" id="kpi-top-fault" style="font-size:14px; line-height:1.3; color:var(--ok); padding-top:4px;">—</div>
-        <div class="kpi-sub" id="kpi-top-fault-sub">—</div>
-        <i class="ti ti-flame kpi-icon" style="color:var(--ok);"></i>
+      <div class="kpi">
+        <div class="kpi-bar" style="background:var(--ok);"></div>
+        <div class="kpi-lbl">Falha mais frequente</div>
+        <div class="kpi-val" id="kv-top" style="font-size:13px;line-height:1.3;color:var(--ok);padding-top:4px;">—</div>
+        <div class="kpi-sub" id="ks-top">—</div>
+        <i class="ti ti-flame kpi-ico" style="color:var(--ok);"></i>
       </div>
-      <div class="kpi-card">
-        <div class="kpi-accent" style="background:#e67e22;"></div>
-        <div class="kpi-label">Período consultado</div>
-        <div class="kpi-value" id="kpi-period" style="font-size:13px; line-height:1.4; color:#e67e22; padding-top:4px;">—</div>
-        <div class="kpi-sub" id="kpi-period-sub">—</div>
-        <i class="ti ti-calendar kpi-icon" style="color:#e67e22;"></i>
-      </div>
-    </div>
-
-    <!-- CHARTS (ocultos até ter dados) -->
-    <div class="charts-row" id="charts-row" style="display:none;">
-      <div class="chart-card">
-        <div class="chart-title"><i class="ti ti-chart-bar" aria-hidden="true"></i> Falhas por tipo</div>
-        <div class="chart-wrap" style="height:240px;"><canvas id="chart-fault-type" role="img" aria-label="Falhas por tipo"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-title"><i class="ti ti-chart-pie" aria-hidden="true"></i> Falhas por veículo (top 8)</div>
-        <div class="chart-wrap" style="height:240px;"><canvas id="chart-by-device" role="img" aria-label="Falhas por veículo"></canvas></div>
-      </div>
-      <div class="chart-card full">
-        <div class="chart-title"><i class="ti ti-timeline" aria-hidden="true"></i> Falhas ao longo do tempo</div>
-        <div class="chart-wrap" style="height:180px;"><canvas id="chart-timeline" role="img" aria-label="Falhas por data"></canvas></div>
+      <div class="kpi">
+        <div class="kpi-bar" style="background:#e67e22;"></div>
+        <div class="kpi-lbl">Período</div>
+        <div class="kpi-val" id="kv-period" style="font-size:13px;line-height:1.4;color:#e67e22;padding-top:4px;">—</div>
+        <div class="kpi-sub" id="ks-period">—</div>
+        <i class="ti ti-calendar kpi-ico" style="color:#e67e22;"></i>
       </div>
     </div>
 
-    <!-- TABLE (oculta até ter dados) -->
-    <div class="table-card" id="table-card" style="display:none;">
-      <div class="table-header">
-        <div class="table-title"><i class="ti ti-table" style="font-size:13px; margin-right:5px;"></i> Registros de falhas</div>
-        <div class="table-count" id="table-count">0 registros</div>
+    <!-- CHARTS -->
+    <div class="charts-grid" id="charts-grid" style="display:none;">
+      <div class="chart-box">
+        <div class="chart-lbl"><i class="ti ti-chart-bar"></i> Falhas por tipo (top 10)</div>
+        <div style="position:relative;height:240px;"><canvas id="ch-type"></canvas></div>
       </div>
-      <div class="table-wrap">
-        <table id="fault-table">
-          <thead>
-            <tr>
-              <th data-col="deviceName">Dispositivo <span class="sort-icon">↕</span></th>
-              <th data-col="deviceId">ID <span class="sort-icon">↕</span></th>
-              <th data-col="dateTime">Data/Hora <span class="sort-icon">↕</span></th>
-              <th data-col="diagnosticName">Tipo de falha <span class="sort-icon">↕</span></th>
-              <th data-col="diagnosticCode">Código <span class="sort-icon">↕</span></th>
-              <th data-col="failureMode">Modo de falha <span class="sort-icon">↕</span></th>
-              <th data-col="count">Ocorrências <span class="sort-icon">↕</span></th>
-            </tr>
-          </thead>
-          <tbody id="fault-tbody"></tbody>
+      <div class="chart-box">
+        <div class="chart-lbl"><i class="ti ti-chart-pie"></i> Falhas por veículo (top 8)</div>
+        <div style="position:relative;height:240px;"><canvas id="ch-dev"></canvas></div>
+      </div>
+      <div class="chart-box wide">
+        <div class="chart-lbl"><i class="ti ti-timeline"></i> Falhas ao longo do tempo</div>
+        <div style="position:relative;height:180px;"><canvas id="ch-time"></canvas></div>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="tcard" id="tcard" style="display:none;">
+      <div class="thead-bar">
+        <div class="thead-lbl"><i class="ti ti-table" style="font-size:12px;margin-right:4px;"></i> Registros</div>
+        <div class="thead-cnt" id="tbl-count">—</div>
+      </div>
+      <div class="twrap">
+        <table>
+          <thead><tr>
+            <th data-col="deviceName">Dispositivo <span class="si">↕</span></th>
+            <th data-col="deviceId">ID <span class="si">↕</span></th>
+            <th data-col="dateTime">Data/Hora <span class="si">↕</span></th>
+            <th data-col="diagnosticName">Tipo de falha <span class="si">↕</span></th>
+            <th data-col="diagnosticCode">Código <span class="si">↕</span></th>
+            <th data-col="failureMode">Modo de falha <span class="si">↕</span></th>
+            <th data-col="count">Ocorr. <span class="si">↕</span></th>
+          </tr></thead>
+          <tbody id="tbody"></tbody>
         </table>
       </div>
-      <div class="pagination">
-        <div class="page-info" id="page-info">—</div>
-        <div class="page-btns" id="page-btns"></div>
+      <div class="pag">
+        <div class="pag-info" id="pag-info">—</div>
+        <div class="pag-btns" id="pag-btns"></div>
       </div>
     </div>
 
-    <!-- ESTADO INICIAL -->
-    <div id="state-initial" class="state-box">
+    <!-- ESTADOS -->
+    <div id="st-initial" class="statebox">
       <i class="ti ti-database-search" style="color:var(--info);"></i>
-      <div class="state-title">Pronto para consultar</div>
-      <div class="state-sub">
-        Selecione o período e o veículo desejado,<br>
-        depois clique em <strong style="color:var(--info);">Buscar dados</strong>.
-      </div>
+      <div class="st">Pronto para consultar</div>
+      <div class="ss">Selecione o período e veículo,<br>depois clique em <strong style="color:var(--info);">Buscar dados</strong>.</div>
     </div>
-
-    <!-- LOADING -->
-    <div id="state-loading" class="state-box" style="display:none;">
-      <div class="spinner"></div>
-      <div class="state-title">Consultando a API Geotab...</div>
-      <div class="state-sub" id="loading-msg">Buscando registros de FaultData</div>
+    <div id="st-loading" class="statebox" style="display:none;">
+      <div class="spin"></div>
+      <div class="st">Consultando a API Geotab...</div>
+      <div class="ss" id="st-load-msg">Aguarde</div>
     </div>
-
-    <!-- EMPTY RESULT -->
-    <div id="state-empty" class="state-box" style="display:none;">
-      <i class="ti ti-mood-empty" style="color:var(--text3);"></i>
-      <div class="state-title">Nenhuma falha encontrada</div>
-      <div class="state-sub">Não há registros no período e filtros selecionados.</div>
+    <div id="st-empty" class="statebox" style="display:none;">
+      <i class="ti ti-mood-empty"></i>
+      <div class="st">Nenhuma falha encontrada</div>
+      <div class="ss">Sem registros no período selecionado.</div>
     </div>
-
-    <!-- ERROR -->
-    <div id="state-error" class="state-box" style="display:none;">
+    <div id="st-error" class="statebox" style="display:none;">
       <i class="ti ti-alert-circle" style="color:var(--accent);"></i>
-      <div class="state-title">Erro ao buscar dados</div>
-      <div class="state-sub" id="error-msg">Verifique sua conexão e permissões.</div>
+      <div class="st">Erro ao buscar dados</div>
+      <div class="ss" id="st-err-msg">Verifique permissões e conexão.</div>
     </div>
 
-  </div>
-</div>
+  </div><!-- /content -->
+</div><!-- /app -->
 
 <script>
-// =============================================
-// GEOTAB ADD-IN — integração via api.call()
-// MyGeotab injeta: api, state
-// =============================================
+/* =========================================================
+   GEOTAB ADD-IN — fault_dashboard
+   Ponto de entrada: geotab.addin.fault_dashboard
+   ========================================================= */
 
-// ---- STATE ----
-let allData      = [];
-let filteredData = [];
-let currentPage  = 1;
-const PAGE_SIZE  = 20;
-let sortCol      = 'dateTime';
-let sortDir      = -1;
-let activePreset = '30d';
-let deviceMap    = {};   // id → name
+var _api, _state;
+var allData = [], filteredData = [];
+var currentPage = 1, PAGE = 20;
+var sortCol = 'dateTime', sortDir = -1;
+var activePreset = '30d';
+var deviceMap = {};
+var chType = null, chDev = null, chTime = null;
+var COLORS = ['#e84d3d','#4a9eff','#f5a623','#2ecc71','#9b59b6','#e67e22','#1abc9c','#e74c3c','#3498db','#f39c12','#16a085','#8e44ad'];
 
-// ---- CHART INSTANCES ----
-let chartFaultType = null, chartDevice = null, chartTimeline = null;
-
-// ---- COLORS ----
-const COLORS = [
-  '#e84d3d','#4a9eff','#f5a623','#2ecc71',
-  '#9b59b6','#e67e22','#1abc9c','#e74c3c',
-  '#3498db','#f39c12','#16a085','#8e44ad'
-];
-
-// =============================================
-// GEOTAB ENTRY POINT
-// =============================================
-geotab.addin.faultDashboard = function(api, state) {
-  // chamado pelo MyGeotab assim que o add-in carrega
-  initAddin(api, state);
+// ── ENTRY POINT ──
+geotab.addin.fault_dashboard = function(api, state) {
+  _api = api; _state = state;
+  loadDevices();
+  setupUI();
+  setPreset('30d');
+  fetchFaults();
 };
 
-function initAddin(api, state) {
-  // Carrega lista de veículos na sidebar
-  loadDevices(api);
-
-  // Configuração de eventos de UI
-  setupUI(api);
-
-  // Dispara busca inicial (últimos 30 dias)
-  setPreset('30d');
-  fetchFaults(api);
-}
-
-// =============================================
-// CARREGA LISTA DE VEÍCULOS
-// =============================================
-function loadDevices(api) {
-  api.call('Get', {
-    typeName: 'Device',
-    search: { activeFrom: null, activeTo: null }
-  }, function(devices) {
+// ── DEVICES ──
+function loadDevices() {
+  _api.call('Get', { typeName: 'Device' }, function(devs) {
     deviceMap = {};
-    const sel = document.getElementById('filter-device');
+    var sel = document.getElementById('sel-device');
     sel.innerHTML = '<option value="">Todos os veículos</option>';
-    devices
-      .filter(d => d.name)
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .forEach(d => {
-        deviceMap[d.id] = d.name;
-        const opt = document.createElement('option');
-        opt.value = d.id;
-        opt.textContent = d.name;
-        sel.appendChild(opt);
-      });
-  }, function(err) {
-    console.warn('[FaultDash] Não foi possível carregar dispositivos:', err);
-  });
+    devs.filter(function(d){ return d.name; })
+        .sort(function(a,b){ return a.name.localeCompare(b.name); })
+        .forEach(function(d){
+          deviceMap[d.id] = d.name;
+          var o = document.createElement('option');
+          o.value = d.id; o.textContent = d.name;
+          sel.appendChild(o);
+        });
+  }, function(e){ console.warn('[FD] devices err', e); });
 }
 
-// =============================================
-// BUSCA FAULTDATA
-// =============================================
-function fetchFaults(api) {
+// ── FETCH ──
+function fetchFaults() {
   showState('loading');
   document.getElementById('btn-fetch').disabled = true;
+  var rng = getRange();
+  var search = { fromDate: rng.from.toISOString(), toDate: rng.to.toISOString() };
+  var devId = document.getElementById('sel-device').value;
+  if (devId) search.deviceSearch = { id: devId };
 
-  const { fromDate, toDate } = getDateRange();
-  const deviceId = document.getElementById('filter-device').value;
-
-  const search = {
-    fromDate: fromDate.toISOString(),
-    toDate:   toDate.toISOString()
-  };
-  if (deviceId) {
-    search.deviceSearch = { id: deviceId };
-  }
-
-  setLoadingMsg('Buscando FaultData na API Geotab...');
-
-  api.call('Get', {
-    typeName: 'FaultData',
-    search: search
-  }, function(results) {
+  setLoadMsg('Buscando FaultData...');
+  _api.call('Get', { typeName: 'FaultData', search: search }, function(res) {
     document.getElementById('btn-fetch').disabled = false;
-    setLoadingMsg('Processando ' + results.length + ' registros...');
-
-    // Normaliza os dados retornados pelo Geotab
-    allData = results.map(r => ({
-      deviceId:      r.device ? r.device.id   : '—',
-      deviceName:    r.device ? (deviceMap[r.device.id] || r.device.id) : '—',
-      dateTime:      r.dateTime ? new Date(r.dateTime) : null,
-      diagnosticId:  r.diagnostic ? r.diagnostic.id   : '—',
-      diagnosticName: r.diagnostic ? (r.diagnostic.name || r.diagnostic.id) : '—',
-      diagnosticCode: r.diagnostic ? (r.diagnostic.code != null ? String(r.diagnostic.code) : '—') : '—',
-      failureMode:   r.failureModeId ? r.failureModeId.id : '—',
-      count:         r.count != null ? r.count : 1,
-      _raw: r
-    }));
-
+    setLoadMsg('Processando ' + res.length + ' registros...');
+    allData = res.map(function(r){
+      var devId2 = r.device ? r.device.id : '';
+      return {
+        deviceId:       devId2,
+        deviceName:     deviceMap[devId2] || devId2 || '—',
+        dateTime:       r.dateTime ? new Date(r.dateTime) : null,
+        diagnosticId:   r.diagnostic ? r.diagnostic.id : '—',
+        diagnosticName: r.diagnostic ? (r.diagnostic.name || r.diagnostic.id || '—') : '—',
+        diagnosticCode: r.diagnostic && r.diagnostic.code != null ? String(r.diagnostic.code) : '—',
+        failureMode:    r.failureModeId ? (r.failureModeId.id || '—') : '—',
+        count:          r.count != null ? r.count : 1
+      };
+    });
     document.getElementById('total-count').textContent = allData.length.toLocaleString('pt-BR');
-    populateLocalFilters();
-    applyLocalFilters();
-
-    if (allData.length === 0) {
-      showState('empty');
-    } else {
-      showState('data');
-      document.getElementById('export-btn').disabled = false;
-    }
-  }, function(err) {
+    populateFilters();
+    applyFilters();
+    if (allData.length === 0) { showState('empty'); }
+    else { showState('data'); document.getElementById('btn-export').disabled = false; }
+  }, function(e) {
     document.getElementById('btn-fetch').disabled = false;
-    document.getElementById('error-msg').textContent = typeof err === 'string' ? err : JSON.stringify(err);
+    document.getElementById('st-err-msg').textContent = typeof e === 'string' ? e : JSON.stringify(e);
     showState('error');
-    console.error('[FaultDash] Erro API:', err);
+    console.error('[FD] fetch err', e);
   });
 }
 
-// =============================================
-// RANGE DE DATAS
-// =============================================
-function getDateRange() {
-  const now   = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  if (activePreset === 'today') {
-    return {
-      fromDate: today,
-      toDate:   new Date(today.getTime() + 86399999)
-    };
-  }
-  if (activePreset === '7d') {
-    return {
-      fromDate: new Date(today.getTime() - 6 * 86400000),
-      toDate:   now
-    };
-  }
-  if (activePreset === '30d') {
-    return {
-      fromDate: new Date(today.getTime() - 29 * 86400000),
-      toDate:   now
-    };
-  }
-  if (activePreset === '90d') {
-    return {
-      fromDate: new Date(today.getTime() - 89 * 86400000),
-      toDate:   now
-    };
-  }
-  // custom
-  const fromVal = document.getElementById('date-from').value;
-  const toVal   = document.getElementById('date-to').value;
+// ── DATE RANGE ──
+function getRange() {
+  var now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (activePreset === 'today') return { from: today, to: new Date(today.getTime() + 86399999) };
+  if (activePreset === '7d')    return { from: new Date(today.getTime() - 6*864e5), to: now };
+  if (activePreset === '30d')   return { from: new Date(today.getTime() - 29*864e5), to: now };
+  if (activePreset === '90d')   return { from: new Date(today.getTime() - 89*864e5), to: now };
+  var fv = document.getElementById('date-from').value;
+  var tv = document.getElementById('date-to').value;
   return {
-    fromDate: fromVal ? new Date(fromVal) : new Date(today.getTime() - 29 * 86400000),
-    toDate:   toVal   ? new Date(toVal + 'T23:59:59') : now
+    from: fv ? new Date(fv) : new Date(today.getTime() - 29*864e5),
+    to:   tv ? new Date(tv + 'T23:59:59') : now
   };
 }
 
-// =============================================
-// FILTROS LOCAIS (após busca)
-// =============================================
-function populateLocalFilters() {
-  const faults = [...new Set(allData.map(r => r.diagnosticName).filter(f => f && f !== '—'))].sort();
-  const fSel = document.getElementById('filter-fault');
-  fSel.innerHTML = '<option value="">Todas as falhas</option>' +
-    faults.map(f => `<option value="${f}">${f}</option>`).join('');
+// ── LOCAL FILTERS ──
+function populateFilters() {
+  var faults = [];
+  var seen = {};
+  allData.forEach(function(r){ if(r.diagnosticName && !seen[r.diagnosticName]){ seen[r.diagnosticName]=1; faults.push(r.diagnosticName); } });
+  faults.sort();
+  var sel = document.getElementById('sel-fault');
+  sel.innerHTML = '<option value="">Todas as falhas</option>' + faults.map(function(f){ return '<option value="'+f+'">'+f+'</option>'; }).join('');
 }
 
-function applyLocalFilters() {
-  const search = document.getElementById('search-input').value.toLowerCase();
-  const fault  = document.getElementById('filter-fault').value;
-
-  filteredData = allData.filter(r => {
-    if (fault  && r.diagnosticName !== fault) return false;
-    if (search) {
-      const blob = [r.deviceName, r.diagnosticName, r.diagnosticCode, r.failureMode].join(' ').toLowerCase();
-      if (!blob.includes(search)) return false;
+function applyFilters() {
+  var srch = document.getElementById('inp-search').value.toLowerCase();
+  var fault = document.getElementById('sel-fault').value;
+  filteredData = allData.filter(function(r){
+    if (fault && r.diagnosticName !== fault) return false;
+    if (srch) {
+      var blob = [r.deviceName, r.diagnosticName, r.diagnosticCode, r.failureMode].join(' ').toLowerCase();
+      if (blob.indexOf(srch) === -1) return false;
     }
     return true;
   });
-
-  // sort
-  filteredData.sort((a, b) => {
-    let va = a[sortCol], vb = b[sortCol];
+  filteredData.sort(function(a,b){
+    var va = a[sortCol], vb = b[sortCol];
     if (va instanceof Date) return sortDir * (va - vb);
-    const na = parseFloat(va), nb = parseFloat(vb);
-    if (!isNaN(na) && !isNaN(nb)) return sortDir * (na - nb);
-    return sortDir * String(va || '').localeCompare(String(vb || ''));
+    var na = parseFloat(va), nb = parseFloat(vb);
+    if (!isNaN(na) && !isNaN(nb)) return sortDir*(na-nb);
+    return sortDir * String(va||'').localeCompare(String(vb||''));
   });
-
   currentPage = 1;
-  updateKPIs();
-  updateCharts();
-  updateTable();
+  renderKPIs(); renderCharts(); renderTable();
 }
 
-// =============================================
-// KPIs
-// =============================================
-function updateKPIs() {
-  const n = filteredData.length;
-  document.getElementById('kpi-total').textContent = n.toLocaleString('pt-BR');
-  document.getElementById('kpi-total-sub').textContent = n !== allData.length
-    ? `de ${allData.length.toLocaleString('pt-BR')} total`
-    : 'registros no período';
-
-  const devices = new Set(filteredData.map(r => r.deviceId)).size;
-  document.getElementById('kpi-devices').textContent = devices;
-  document.getElementById('kpi-devices-sub').textContent = 'dispositivos afetados';
-
-  const types = new Set(filteredData.map(r => r.diagnosticName)).size;
-  document.getElementById('kpi-types').textContent = types;
-  document.getElementById('kpi-types-sub').textContent = 'tipos distintos';
-
-  const dates = filteredData.map(r => r.dateTime).filter(Boolean).sort((a,b)=>b-a);
-  document.getElementById('kpi-latest').textContent  = dates[0] ? dates[0].toLocaleDateString('pt-BR')                           : '—';
-  document.getElementById('kpi-latest-sub').textContent = dates[0] ? dates[0].toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
-
-  const faultCount = {};
-  filteredData.forEach(r => { if (r.diagnosticName && r.diagnosticName !== '—') faultCount[r.diagnosticName] = (faultCount[r.diagnosticName]||0)+1; });
-  const topFault = Object.entries(faultCount).sort((a,b)=>b[1]-a[1])[0];
-  document.getElementById('kpi-top-fault').textContent    = topFault ? topFault[0] : '—';
-  document.getElementById('kpi-top-fault-sub').textContent = topFault ? `${topFault[1]} ocorrências`   : '';
-
-  const { fromDate, toDate } = getDateRange();
-  document.getElementById('kpi-period').textContent     = fromDate.toLocaleDateString('pt-BR') + ' →';
-  document.getElementById('kpi-period-sub').textContent = toDate.toLocaleDateString('pt-BR');
+// ── KPIs ──
+function renderKPIs() {
+  var n = filteredData.length;
+  set('kv-total', n.toLocaleString('pt-BR'));
+  set('ks-total', n !== allData.length ? 'de '+allData.length.toLocaleString('pt-BR')+' total' : 'registros no período');
+  set('kv-dev', new Set(filteredData.map(function(r){return r.deviceId;})).size);
+  set('kv-types', new Set(filteredData.map(function(r){return r.diagnosticName;})).size);
+  var dates = filteredData.map(function(r){return r.dateTime;}).filter(Boolean).sort(function(a,b){return b-a;});
+  set('kv-latest', dates[0] ? dates[0].toLocaleDateString('pt-BR') : '—');
+  set('ks-latest', dates[0] ? dates[0].toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '');
+  var fc={};
+  filteredData.forEach(function(r){ if(r.diagnosticName && r.diagnosticName!=='—') fc[r.diagnosticName]=(fc[r.diagnosticName]||0)+1; });
+  var top = Object.entries(fc).sort(function(a,b){return b[1]-a[1];})[0];
+  set('kv-top', top ? top[0] : '—');
+  set('ks-top', top ? top[1]+' ocorrências' : '');
+  var rng = getRange();
+  set('kv-period', rng.from.toLocaleDateString('pt-BR')+' →');
+  set('ks-period', rng.to.toLocaleDateString('pt-BR'));
 }
 
-// =============================================
-// CHARTS
-// =============================================
-function updateCharts() {
-  updateFaultTypeChart();
-  updateDeviceChart();
-  updateTimelineChart();
+// ── CHARTS ──
+function renderCharts() {
+  renderTypeChart(); renderDevChart(); renderTimeChart();
 }
+function dc(c){ if(c){ try{c.destroy();}catch(e){} } }
 
-function destroyChart(c) { if (c) { try { c.destroy(); } catch(e){} } }
-
-function updateFaultTypeChart() {
-  const counts = {};
-  filteredData.forEach(r => { if (r.diagnosticName && r.diagnosticName !== '—') counts[r.diagnosticName] = (counts[r.diagnosticName]||0)+1; });
-  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  destroyChart(chartFaultType);
-  chartFaultType = new Chart(document.getElementById('chart-fault-type'), {
-    type: 'bar',
-    data: {
-      labels: sorted.map(([k])=>k.length>24?k.slice(0,24)+'…':k),
-      datasets: [{ data: sorted.map(([,v])=>v), backgroundColor: sorted.map((_,i)=>COLORS[i%COLORS.length]+'cc'), borderRadius: 4, borderSkipped: false }]
+function renderTypeChart(){
+  var counts={};
+  filteredData.forEach(function(r){ if(r.diagnosticName && r.diagnosticName!=='—') counts[r.diagnosticName]=(counts[r.diagnosticName]||0)+1; });
+  var sorted=Object.entries(counts).sort(function(a,b){return b[1]-a[1];}).slice(0,10);
+  dc(chType);
+  chType = new Chart(document.getElementById('ch-type'),{
+    type:'bar',
+    data:{
+      labels: sorted.map(function(x){return x[0].length>24?x[0].slice(0,24)+'…':x[0];}),
+      datasets:[{data:sorted.map(function(x){return x[1];}), backgroundColor:sorted.map(function(_,i){return COLORS[i%COLORS.length]+'cc';}), borderRadius:4, borderSkipped:false}]
     },
-    options: {
-      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
-      plugins: { legend: { display: false }, tooltip: { callbacks: { title: (i)=>sorted[i[0].dataIndex][0] } } },
-      scales: {
-        x: { ticks: { color:'#8b9099', font:{size:10} }, grid: { color:'rgba(255,255,255,0.05)' } },
-        y: { ticks: { color:'#8b9099', font:{size:10} }, grid: { display:false } }
+    options:{
+      responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:{callbacks:{title:function(i){return sorted[i[0].dataIndex][0];}}}},
+      scales:{
+        x:{ticks:{color:'#8b9099',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'}},
+        y:{ticks:{color:'#8b9099',font:{size:10}},grid:{display:false}}
       }
     }
   });
 }
 
-function updateDeviceChart() {
-  const counts = {};
-  filteredData.forEach(r => {
-    const name = r.deviceName !== '—' ? r.deviceName : r.deviceId;
-    counts[name] = (counts[name]||0)+1;
-  });
-  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  destroyChart(chartDevice);
-  chartDevice = new Chart(document.getElementById('chart-by-device'), {
-    type: 'doughnut',
-    data: {
-      labels: sorted.map(([k])=>k.length>22?k.slice(0,22)+'…':k),
-      datasets: [{ data: sorted.map(([,v])=>v), backgroundColor: sorted.map((_,i)=>COLORS[i%COLORS.length]+'cc'), borderWidth: 0, hoverOffset: 4 }]
+function renderDevChart(){
+  var counts={};
+  filteredData.forEach(function(r){ var n=r.deviceName!=='—'?r.deviceName:r.deviceId; counts[n]=(counts[n]||0)+1; });
+  var sorted=Object.entries(counts).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+  dc(chDev);
+  chDev = new Chart(document.getElementById('ch-dev'),{
+    type:'doughnut',
+    data:{
+      labels:sorted.map(function(x){return x[0].length>22?x[0].slice(0,22)+'…':x[0];}),
+      datasets:[{data:sorted.map(function(x){return x[1];}), backgroundColor:sorted.map(function(_,i){return COLORS[i%COLORS.length]+'cc';}), borderWidth:0, hoverOffset:4}]
     },
-    options: {
-      responsive: true, maintainAspectRatio: false, cutout: '65%',
-      plugins: {
-        legend: { position: 'right', labels: { color:'#8b9099', font:{size:10}, boxWidth:10, padding:8 } }
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'right',labels:{color:'#8b9099',font:{size:10},boxWidth:10,padding:8}}}}
+  });
+}
+
+function renderTimeChart(){
+  var byDay={};
+  filteredData.forEach(function(r){
+    if(!r.dateTime) return;
+    var d=r.dateTime.toISOString().slice(0,10);
+    byDay[d]=(byDay[d]||0)+1;
+  });
+  var sorted=Object.entries(byDay).sort(function(a,b){return a[0].localeCompare(b[0]);});
+  dc(chTime);
+  chTime = new Chart(document.getElementById('ch-time'),{
+    type:'line',
+    data:{
+      labels:sorted.map(function(x){ return new Date(x[0]+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}); }),
+      datasets:[{data:sorted.map(function(x){return x[1];}), borderColor:'#4a9eff', backgroundColor:'rgba(74,158,255,.08)', fill:true, tension:.3, pointRadius:3, pointBackgroundColor:'#4a9eff', borderWidth:1.5}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#8b9099',font:{size:10},maxRotation:45},grid:{color:'rgba(255,255,255,.05)'}},
+        y:{ticks:{color:'#8b9099',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'},beginAtZero:true}
       }
     }
   });
 }
 
-function updateTimelineChart() {
-  const byDay = {};
-  filteredData.forEach(r => {
-    if (!r.dateTime) return;
-    const d = r.dateTime.toISOString().slice(0,10);
-    byDay[d] = (byDay[d]||0)+1;
-  });
-  const sorted = Object.entries(byDay).sort(([a],[b])=>a.localeCompare(b));
-  destroyChart(chartTimeline);
-  chartTimeline = new Chart(document.getElementById('chart-timeline'), {
-    type: 'line',
-    data: {
-      labels: sorted.map(([d]) => new Date(d+'T12:00:00').toLocaleDateString('pt-BR', {day:'2-digit',month:'short'})),
-      datasets: [{
-        data: sorted.map(([,v])=>v),
-        borderColor: '#4a9eff', backgroundColor: 'rgba(74,158,255,0.08)',
-        fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor:'#4a9eff', borderWidth: 1.5
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color:'#8b9099', font:{size:10}, maxRotation:45 }, grid: { color:'rgba(255,255,255,0.05)' } },
-        y: { ticks: { color:'#8b9099', font:{size:10} }, grid: { color:'rgba(255,255,255,0.05)' }, beginAtZero:true }
-      }
-    }
-  });
-}
+// ── TABLE ──
+function fmtD(d){ if(!d)return'—'; return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
 
-// =============================================
-// TABLE + PAGINATION
-// =============================================
-function fmtDate(d) {
-  if (!d) return '—';
-  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-}
-
-function updateTable() {
-  const tbody = document.getElementById('fault-tbody');
-  const total = filteredData.length;
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  if (currentPage > pages) currentPage = pages;
-  const start = (currentPage-1)*PAGE_SIZE;
-  const slice = filteredData.slice(start, start+PAGE_SIZE);
-
-  if (slice.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3);">
-      <i class="ti ti-search-off" style="font-size:20px;display:block;margin-bottom:8px;"></i>
-      Nenhum registro encontrado
-    </td></tr>`;
+function renderTable(){
+  var total=filteredData.length, pages=Math.max(1,Math.ceil(total/PAGE));
+  if(currentPage>pages) currentPage=pages;
+  var start=(currentPage-1)*PAGE, slice=filteredData.slice(start,start+PAGE);
+  var tbody=document.getElementById('tbody');
+  if(!slice.length){
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--text3);">Nenhum registro</td></tr>';
   } else {
-    tbody.innerHTML = slice.map(r => {
-      const code = r.diagnosticCode;
-      const codeNum = parseInt(code);
-      const severity = codeNum > 500 ? 'red' : codeNum > 200 ? 'warn' : 'info';
-      const shortName = r.deviceName.length > 30 ? r.deviceName.slice(0,30)+'…' : r.deviceName;
-      return `<tr>
-        <td title="${r.deviceName}">${shortName}</td>
-        <td><span class="code">${r.deviceId}</span></td>
-        <td>${fmtDate(r.dateTime)}</td>
-        <td><span class="badge badge-${severity}" title="${r.diagnosticName}">${r.diagnosticName.length>26?r.diagnosticName.slice(0,26)+'…':r.diagnosticName}</span></td>
-        <td><span class="code">${code}</span></td>
-        <td title="${r.failureMode}"><span class="code">${r.failureMode.length>20?r.failureMode.slice(0,20)+'…':r.failureMode}</span></td>
-        <td style="text-align:center;">${r.count}</td>
-      </tr>`;
+    tbody.innerHTML=slice.map(function(r){
+      var c=parseInt(r.diagnosticCode), sev=c>500?'r':c>200?'w':'i';
+      var nm=r.deviceName.length>32?r.deviceName.slice(0,32)+'…':r.deviceName;
+      return '<tr>'
+        +'<td title="'+esc(r.deviceName)+'">'+esc(nm)+'</td>'
+        +'<td><span class="code">'+esc(r.deviceId)+'</span></td>'
+        +'<td>'+fmtD(r.dateTime)+'</td>'
+        +'<td><span class="bdg bdg-'+sev+'" title="'+esc(r.diagnosticName)+'">'+esc(r.diagnosticName.length>26?r.diagnosticName.slice(0,26)+'…':r.diagnosticName)+'</span></td>'
+        +'<td><span class="code">'+esc(r.diagnosticCode)+'</span></td>'
+        +'<td title="'+esc(r.failureMode)+'"><span class="code">'+esc(r.failureMode.length>20?r.failureMode.slice(0,20)+'…':r.failureMode)+'</span></td>'
+        +'<td style="text-align:center;">'+r.count+'</td>'
+        +'</tr>';
     }).join('');
   }
-
-  document.getElementById('table-count').textContent = `${total.toLocaleString('pt-BR')} registro${total!==1?'s':''}`;
-  document.getElementById('page-info').textContent   = `${start+1}–${Math.min(start+PAGE_SIZE,total)} de ${total}`;
-  renderPagination(pages);
+  set('tbl-count', total.toLocaleString('pt-BR')+' registro'+(total!==1?'s':''));
+  set('pag-info', (start+1)+'–'+Math.min(start+PAGE,total)+' de '+total);
+  renderPag(pages);
 }
 
-function renderPagination(pages) {
-  const el = document.getElementById('page-btns');
-  let btns = '';
-  btns += `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}><i class="ti ti-chevron-left" style="font-size:12px;"></i></button>`;
-  const range = [];
-  if (pages <= 7) { for(let i=1;i<=pages;i++) range.push(i); }
-  else {
-    range.push(1);
-    if (currentPage > 3) range.push('…');
-    for(let i=Math.max(2,currentPage-1);i<=Math.min(pages-1,currentPage+1);i++) range.push(i);
-    if (currentPage < pages-2) range.push('…');
-    range.push(pages);
+function renderPag(pages){
+  var el=document.getElementById('pag-btns'), h='';
+  h+='<button class="pbtn2" onclick="goPage('+(currentPage-1)+')" '+(currentPage===1?'disabled':'')+'><i class="ti ti-chevron-left" style="font-size:11px;"></i></button>';
+  var rng=[];
+  if(pages<=7){for(var i=1;i<=pages;i++)rng.push(i);}
+  else{
+    rng.push(1);
+    if(currentPage>3)rng.push('…');
+    for(var j=Math.max(2,currentPage-1);j<=Math.min(pages-1,currentPage+1);j++)rng.push(j);
+    if(currentPage<pages-2)rng.push('…');
+    rng.push(pages);
   }
-  range.forEach(p => {
-    if (p === '…') btns += `<button class="page-btn" disabled>…</button>`;
-    else btns += `<button class="page-btn ${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`;
+  rng.forEach(function(p){
+    if(p==='…') h+='<button class="pbtn2" disabled>…</button>';
+    else h+='<button class="pbtn2 '+(p===currentPage?'on':'')+'" onclick="goPage('+p+')">'+p+'</button>';
   });
-  btns += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===pages?'disabled':''}><i class="ti ti-chevron-right" style="font-size:12px;"></i></button>`;
-  el.innerHTML = btns;
+  h+='<button class="pbtn2" onclick="goPage('+(currentPage+1)+')" '+(currentPage===pages?'disabled':'')+'><i class="ti ti-chevron-right" style="font-size:11px;"></i></button>';
+  el.innerHTML=h;
 }
 
-function goPage(p) {
-  const pages = Math.ceil(filteredData.length/PAGE_SIZE);
-  if (p < 1 || p > pages) return;
-  currentPage = p;
-  updateTable();
+function goPage(p){
+  var pages=Math.ceil(filteredData.length/PAGE);
+  if(p<1||p>pages)return;
+  currentPage=p; renderTable();
 }
 
-// =============================================
-// CONTROLE DE ESTADOS (loading / data / etc)
-// =============================================
-const DATA_SECTIONS = ['kpi-grid','charts-row','table-card'];
-const STATE_BOXES   = ['state-initial','state-loading','state-empty','state-error'];
-
-function showState(state) {
-  STATE_BOXES.forEach(id => document.getElementById(id).style.display = 'none');
-  DATA_SECTIONS.forEach(id => document.getElementById(id).style.display = 'none');
-
-  if (state === 'data') {
-    DATA_SECTIONS.forEach(id => document.getElementById(id).style.display = '');
+// ── STATE MACHINE ──
+function showState(s){
+  ['st-initial','st-loading','st-empty','st-error'].forEach(function(id){ document.getElementById(id).style.display='none'; });
+  ['kpi-grid','charts-grid','tcard'].forEach(function(id){ document.getElementById(id).style.display='none'; });
+  if(s==='data'){
+    ['kpi-grid','charts-grid','tcard'].forEach(function(id){ document.getElementById(id).style.display=''; });
   } else {
-    document.getElementById('state-' + state).style.display = '';
+    document.getElementById('st-'+s).style.display='';
   }
 }
+function setLoadMsg(m){ document.getElementById('st-load-msg').textContent=m; }
 
-function setLoadingMsg(msg) {
-  document.getElementById('loading-msg').textContent = msg;
+// ── PRESET ──
+function setPreset(p){
+  activePreset=p;
+  document.querySelectorAll('.pbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.p===p); });
+  document.getElementById('custom-dates').style.display = p==='custom' ? 'flex' : 'none';
 }
 
-// =============================================
-// PRESET DE PERÍODO
-// =============================================
-function setPreset(preset) {
-  activePreset = preset;
-  document.querySelectorAll('.preset-btn').forEach(b => b.classList.toggle('active', b.dataset.preset === preset));
-  document.getElementById('custom-dates').style.display = preset === 'custom' ? 'flex' : 'none';
-}
-
-// =============================================
-// EXPORT TSV
-// =============================================
-document.getElementById('export-btn').addEventListener('click', () => {
-  if (!filteredData.length) return;
-  const cols = ['deviceName','deviceId','dateTime','diagnosticName','diagnosticCode','failureMode','count'];
-  const headers = ['Dispositivo','DeviceId','Data/Hora','Tipo de falha','Código','Modo de falha','Ocorrências'];
-  const rows = filteredData.map(r =>
-    cols.map(c => {
-      const v = c === 'dateTime' ? fmtDate(r[c]) : String(r[c]??'');
-      return v.includes('\t') ? `"${v}"` : v;
-    }).join('\t')
-  );
-  const blob = new Blob([headers.join('\t') + '\n' + rows.join('\n')], {type:'text/tab-separated-values'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `falhas_${new Date().toISOString().slice(0,10)}.tsv`;
-  a.click();
+// ── EXPORT ──
+document.getElementById('btn-export').addEventListener('click', function(){
+  if(!filteredData.length)return;
+  var cols=['deviceName','deviceId','dateTime','diagnosticName','diagnosticCode','failureMode','count'];
+  var hdr=['Dispositivo','DeviceId','Data/Hora','Tipo de falha','Código','Modo de falha','Ocorrências'];
+  var rows=filteredData.map(function(r){
+    return cols.map(function(c){ var v=c==='dateTime'?fmtD(r[c]):String(r[c]??''); return v.indexOf('\t')>-1?'"'+v+'"':v; }).join('\t');
+  });
+  var blob=new Blob([hdr.join('\t')+'\n'+rows.join('\n')],{type:'text/tab-separated-values'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='falhas_'+new Date().toISOString().slice(0,10)+'.tsv'; a.click();
 });
 
-// =============================================
-// EVENTOS DE UI
-// =============================================
-function setupUI(api) {
-  // presets
-  document.querySelectorAll('.preset-btn').forEach(btn => {
-    btn.addEventListener('click', () => setPreset(btn.dataset.preset));
+// ── UI EVENTS ──
+function setupUI(){
+  document.querySelectorAll('.pbtn').forEach(function(b){ b.addEventListener('click',function(){ setPreset(b.dataset.p); }); });
+  document.getElementById('btn-fetch').addEventListener('click', fetchFaults);
+  document.getElementById('inp-search').addEventListener('input', applyFilters);
+  document.getElementById('sel-fault').addEventListener('change', applyFilters);
+  document.getElementById('btn-clear').addEventListener('click',function(){
+    document.getElementById('inp-search').value='';
+    document.getElementById('sel-fault').value='';
+    applyFilters();
   });
-
-  // buscar
-  document.getElementById('btn-fetch').addEventListener('click', () => fetchFaults(api));
-
-  // filtros locais
-  document.getElementById('search-input').addEventListener('input', applyLocalFilters);
-  document.getElementById('filter-fault').addEventListener('change', applyLocalFilters);
-
-  // limpar filtros locais
-  document.getElementById('clear-filters').addEventListener('click', () => {
-    document.getElementById('search-input').value = '';
-    document.getElementById('filter-fault').value = '';
-    applyLocalFilters();
-  });
-
-  // sort por coluna
-  document.querySelectorAll('thead th[data-col]').forEach(th => {
-    th.addEventListener('click', () => {
-      const col = th.dataset.col;
-      if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = -1; }
-      applyLocalFilters();
-      document.querySelectorAll('thead th .sort-icon').forEach(s => s.textContent = '↕');
-      th.querySelector('.sort-icon').textContent = sortDir === 1 ? '↑' : '↓';
+  document.querySelectorAll('thead th[data-col]').forEach(function(th){
+    th.addEventListener('click',function(){
+      var col=th.dataset.col;
+      if(sortCol===col) sortDir*=-1; else{ sortCol=col; sortDir=-1; }
+      applyFilters();
+      document.querySelectorAll('thead th .si').forEach(function(s){s.textContent='↕';});
+      th.querySelector('.si').textContent = sortDir===1?'↑':'↓';
     });
   });
 }
 
-// =============================================
-// FALLBACK PARA DESENVOLVIMENTO LOCAL
-// (fora do MyGeotab, usa dados mock para testar)
-// =============================================
-if (typeof geotab === 'undefined') {
-  console.warn('[FaultDash] Rodando fora do MyGeotab — usando mock de API');
-  const mockApi = {
-    call: function(method, params, success, error) {
-      console.log('[MockAPI]', method, params);
-      if (params.typeName === 'Device') {
-        success([
-          { id: 'b1', name: 'TEV9A14 | Daily 35' },
-          { id: 'b2', name: 'FLT001 | Sprinter 415' },
-          { id: 'b3', name: 'TEV8B22 | Transit 350' },
-        ]);
-      } else if (params.typeName === 'FaultData') {
-        success([
-          { device:{id:'b1'}, dateTime:'2026-05-08T08:11:31Z', diagnostic:{id:'diag1', name:'GPS failure fault', code:298}, failureModeId:{id:'NoFailureModeId'}, count:3 },
-          { device:{id:'b2'}, dateTime:'2026-05-07T14:22:10Z', diagnostic:{id:'diag2', name:'Engine overheat fault', code:512}, failureModeId:{id:'NoFailureModeId'}, count:1 },
-          { device:{id:'b1'}, dateTime:'2026-05-06T09:05:44Z', diagnostic:{id:'diag1', name:'GPS failure fault', code:298}, failureModeId:{id:'NoFailureModeId'}, count:2 },
-          { device:{id:'b3'}, dateTime:'2026-05-05T17:48:00Z', diagnostic:{id:'diag3', name:'Battery low voltage fault', code:101}, failureModeId:{id:'NoFailureModeId'}, count:1 },
-          { device:{id:'b2'}, dateTime:'2026-05-04T11:30:00Z', diagnostic:{id:'diag4', name:'Transmission fault', code:773}, failureModeId:{id:'NoFailureModeId'}, count:1 },
-        ]);
-      }
+// ── HELPERS ──
+function set(id,v){ var el=document.getElementById(id); if(el) el.textContent=v; }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── MOCK (dev fora do Geotab) ──
+if(typeof geotab==='undefined'){
+  console.warn('[FD] mock mode');
+  var mockApi={
+    call:function(m,p,ok,err){
+      if(p.typeName==='Device') ok([{id:'b1',name:'TEV9A14 | Daily 35'},{id:'b2',name:'FLT001 | Sprinter 415'},{id:'b3',name:'TEV8B22 | Transit 350'}]);
+      else if(p.typeName==='FaultData') ok([
+        {device:{id:'b1'},dateTime:'2026-05-08T08:11:31Z',diagnostic:{id:'d1',name:'GPS failure fault',code:298},failureModeId:{id:'NoFailureModeId'},count:3},
+        {device:{id:'b2'},dateTime:'2026-05-07T14:22:10Z',diagnostic:{id:'d2',name:'Engine overheat fault',code:512},failureModeId:{id:'NoFailureModeId'},count:1},
+        {device:{id:'b1'},dateTime:'2026-05-06T09:05:44Z',diagnostic:{id:'d1',name:'GPS failure fault',code:298},failureModeId:{id:'NoFailureModeId'},count:2},
+        {device:{id:'b3'},dateTime:'2026-05-05T17:48:00Z',diagnostic:{id:'d3',name:'Battery low voltage fault',code:101},failureModeId:{id:'NoFailureModeId'},count:1},
+        {device:{id:'b2'},dateTime:'2026-05-04T11:30:00Z',diagnostic:{id:'d4',name:'Transmission fault',code:773},failureModeId:{id:'NoFailureModeId'},count:1},
+        {device:{id:'b3'},dateTime:'2026-05-03T11:00:00Z',diagnostic:{id:'d3',name:'Battery low voltage fault',code:101},failureModeId:{id:'NoFailureModeId'},count:2},
+        {device:{id:'b1'},dateTime:'2026-05-02T08:00:00Z',diagnostic:{id:'d5',name:'Door sensor fault',code:405},failureModeId:{id:'NoFailureModeId'},count:1},
+      ]);
     }
   };
-  initAddin(mockApi, {});
+  geotab = { addin: {} };
+  geotab.addin.fault_dashboard = function(api,state){ _api=api; _state=state; loadDevices(); setupUI(); setPreset('30d'); fetchFaults(); };
+  geotab.addin.fault_dashboard(mockApi, {});
 }
 </script>
 </body>
