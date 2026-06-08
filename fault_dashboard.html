@@ -548,9 +548,9 @@ function fetchFaults() {
         devicePlate:    devInfo.plate || devId2 || '—',
         dateTime:       r.dateTime ? new Date(r.dateTime) : null,
         diagnosticId:   r.diagnostic ? r.diagnostic.id : '—',
-        diagnosticName: r.diagnostic ? (r.diagnostic.name || r.diagnostic.id || '—') : '—',
+        diagnosticName: r.diagnostic ? (r.diagnostic.name || r.diagnostic.description || r.diagnostic.id || '—') : '—',
         diagnosticCode: r.diagnostic && r.diagnostic.code != null ? String(r.diagnostic.code) : '—',
-        failureMode:    r.failureModeId ? (r.failureModeId.id || '—') : '—',
+        failureMode:    r.failureModeId ? (r.failureModeId.name || r.failureModeId.description || r.failureModeId.id || '—') : '—',
         count:          r.count != null ? r.count : 1
       };
     });
