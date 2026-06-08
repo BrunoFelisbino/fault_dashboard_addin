@@ -5,7 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard de Falhas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+(function(){
+  var s=document.createElement('style');
+  s.textContent='html,body,#app,[id*="addin"],[class*="addin"],#geotab-addin-container{background:#0a0e14!important;background-color:#0a0e14!important;}';
+  document.head?document.head.appendChild(s):document.addEventListener('DOMContentLoaded',function(){document.head.appendChild(s);});
+  try{
+    document.documentElement.style.setProperty('background','#0a0e14','important');
+    document.documentElement.style.setProperty('background-color','#0a0e14','important');
+    document.body&&document.body.style.setProperty('background','#0a0e14','important');
+  }catch(e){}
+})();
+</script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
@@ -38,7 +51,6 @@
     --r2:      12px;
   }
 
-  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -421,7 +433,7 @@
         <table>
           <thead><tr>
             <th data-col="deviceName">Dispositivo <span class="si">↕</span></th>
-            <th data-col="deviceId">ID <span class="si">↕</span></th>
+            <th data-col="deviceName">Nome <span class="si">↕</span></th>
             <th data-col="dateTime">Data/Hora <span class="si">↕</span></th>
             <th data-col="diagnosticName">Tipo de falha <span class="si">↕</span></th>
             <th data-col="diagnosticCode">Código <span class="si">↕</span></th>
@@ -665,7 +677,7 @@ function renderTimeChart(){
     type:'line',
     data:{
       labels:sorted.map(function(x){ return new Date(x[0]+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}); }),
-      datasets:[{data:sorted.map(function(x){return x[1];}), borderColor:'#4a9eff', backgroundColor:'rgba(74,158,255,.08)', fill:true, tension:.3, pointRadius:3, pointBackgroundColor:'#4a9eff', borderWidth:1.5}]
+      datasets:[{data:sorted.map(function(x){return x[1];}), borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,.08)', fill:true, tension:.3, pointRadius:3, pointBackgroundColor:'#00d4ff', borderWidth:1.5}]
     },
     options:{
       responsive:true, maintainAspectRatio:false,
@@ -693,8 +705,8 @@ function renderTable(){
       var c=parseInt(r.diagnosticCode), sev=c>500?'r':c>200?'w':'i';
       var nm=r.deviceName.length>32?r.deviceName.slice(0,32)+'…':r.deviceName;
       return '<tr>'
-        +'<td title="'+esc(r.deviceName)+'">'+esc(nm)+'</td>'
-        +'<td><span class="code">'+esc(r.deviceId)+'</span></td>'
+        +'<td title="'+esc(r.deviceName)+'"><strong style="color:var(--text);">'+esc(nm)+'</strong></td>'
+        +'<td title="'+esc(r.deviceId)+'"><span class="code" style="font-size:10px;color:var(--text3);">'+esc(r.deviceName!=='—'&&r.deviceName!==r.deviceId?r.deviceName:r.deviceId)+'</span></td>'
         +'<td>'+fmtD(r.dateTime)+'</td>'
         +'<td><span class="bdg bdg-'+sev+'" title="'+esc(r.diagnosticName)+'">'+esc(r.diagnosticName.length>26?r.diagnosticName.slice(0,26)+'…':r.diagnosticName)+'</span></td>'
         +'<td><span class="code">'+esc(r.diagnosticCode)+'</span></td>'
