@@ -331,7 +331,7 @@
       <div class="logo-icon"><i class="ti ti-alert-triangle"></i></div>
       <div>
         <div class="logo-text">Dashboard de Falhas</div>
-        <div class="logo-sub">INTELIGÊNCIA DE FALHAS v3.1.1</div>
+        <div class="logo-sub">INTELIGÊNCIA DE FALHAS v3.1.2</div>
       </div>
     </div>
     <div class="spacer"></div>
@@ -529,7 +529,16 @@ var chType = null, chDev = null, chTime = null;
 var COLORS = ['#e84d3d','#4a9eff','#f5a623','#2ecc71','#9b59b6','#e67e22','#1abc9c','#e74c3c','#3498db','#f39c12','#16a085','#8e44ad'];
 
 // ── ENTRY POINT ──
-geotab.addin.fault_dashboard = function(api, state) {
+var rootScope = typeof window !== 'undefined' ? window : globalThis;
+var isMockMode = typeof rootScope.geotab === 'undefined';
+if (isMockMode) {
+  rootScope.geotab = { addin: {} };
+} else {
+  rootScope.geotab = rootScope.geotab || {};
+  rootScope.geotab.addin = rootScope.geotab.addin || {};
+}
+
+rootScope.geotab.addin.fault_dashboard = function(api, state) {
   _api = api; _state = state;
   loadLookups(fetchFaults);
   setupUI();
@@ -952,7 +961,7 @@ function set(id,v){ var el=document.getElementById(id); if(el) el.textContent=v;
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // ── MOCK (dev fora do Geotab) ──
-if(typeof geotab==='undefined'){
+if (isMockMode) {
   console.warn('[FD] mock mode');
   var mockApi={
     call:function(m,p,ok,err){
@@ -968,9 +977,7 @@ if(typeof geotab==='undefined'){
       ]);
     }
   };
-  geotab = { addin: {} };
-  geotab.addin.fault_dashboard = function(api,state){ _api=api; _state=state; loadDevices(fetchFaults); setupUI(); setPreset('30d'); };
-  geotab.addin.fault_dashboard(mockApi, {});
+  rootScope.geotab.addin.fault_dashboard(mockApi, {});
 }
 </script>
 </body>

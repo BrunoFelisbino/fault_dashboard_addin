@@ -17,4 +17,4 @@ Add-in Geotab para dashboard de falhas da frota.
 ## Observação
 
 - O idioma principal está em `pt-BR`.
-- A versão atual do pacote é `3.1.1`.
+- A versão atual do pacote é `3.1.2`.
