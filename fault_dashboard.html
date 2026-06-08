@@ -10,12 +10,12 @@
 <script>
 (function(){
   var s=document.createElement('style');
-  s.textContent='html,body,#app,[id*="addin"],[class*="addin"],#geotab-addin-container{background:#0a0e14!important;background-color:#0a0e14!important;}';
+  s.textContent='html,body,#app,[id*="addin"],[class*="addin"],#geotab-addin-container{background:#ffffff!important;background-color:#ffffff!important;}';
   document.head?document.head.appendChild(s):document.addEventListener('DOMContentLoaded',function(){document.head.appendChild(s);});
   try{
-    document.documentElement.style.setProperty('background','#0a0e14','important');
-    document.documentElement.style.setProperty('background-color','#0a0e14','important');
-    document.body&&document.body.style.setProperty('background','#0a0e14','important');
+    document.documentElement.style.setProperty('background','#ffffff','important');
+    document.documentElement.style.setProperty('background-color','#ffffff','important');
+    document.body&&document.body.style.setProperty('background','#ffffff','important');
   }catch(e){}
 })();
 </script>
@@ -26,19 +26,19 @@
   html, body, #app,
   [id*="addin"], [class*="addin"],
   #geotab-addin-container {
-    background: #0a0e14 !important;
-    background-color: #0a0e14 !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
   }
 
   :root {
-    --bg:      #0a0e14;
-    --surface: #0f1628;
-    --surface2:#111c32;
-    --border:  rgba(255,255,255,0.07);
-    --border2: rgba(255,255,255,0.13);
-    --text:    #e6edf3;
-    --text2:   #94a3b8;
-    --text3:   #475569;
+    --bg:      #ffffff;
+    --surface: #f8fafc;
+    --surface2:#f1f5f9;
+    --border:  rgba(0,0,0,0.08);
+    --border2: rgba(0,0,0,0.12);
+    --text:    #0f172a;
+    --text2:   #475569;
+    --text3:   #94a3b8;
     --accent:  #f87171;
     --warn:    #fbbf24;
     --ok:      #34d399;
@@ -55,7 +55,7 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   html, body {
-    background: var(--bg) !important;
+    background: #ffffff !important;
     color: var(--text);
     font-family: var(--font);
     font-size: 13px;
@@ -146,7 +146,7 @@
     cursor: pointer; transition: all .15s; border: none;
     white-space: nowrap;
   }
-  .btn-blue  { background: var(--info); color: #0a0e14; }
+  .btn-blue  { background: var(--info); color: #0f172a; }
   .btn-blue:hover  { opacity: .88; transform: translateY(-1px); }
   .btn-blue:disabled  { opacity: .4; cursor: default; transform: none; }
   .btn-ghost { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
