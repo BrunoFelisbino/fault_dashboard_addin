@@ -51,7 +51,7 @@
     --mono:    'JetBrains Mono', 'IBM Plex Mono', monospace;
     --r:       10px;
     --r2:      14px;
-    --shadow:  0 10px 28px rgba(0,0,0,.24);
+    --shadow:  none;
   }
 
 
@@ -75,19 +75,15 @@
     min-height: 100vh;
     padding: 16px 20px;
     background: transparent;
-    max-width: 1520px;
-    margin: 0 auto;
   }
 
   /* ── TOPBAR ── */
   .topbar {
-    display: flex; align-items: center; gap: 14px;
-    padding: 14px 18px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    box-shadow: var(--shadow);
-    position: sticky; top: 16px; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    position: static;
   }
   .logo { display:flex; align-items:center; gap:12px; }
   .logo-icon {
@@ -111,17 +107,26 @@
     border-radius: 999px; border: 1px solid var(--border);
     display: inline-flex; align-items: center; gap: 5px;
   }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(0,212,255,0.07); border: 1px solid rgba(0,212,255,0.18);
+    border-radius: 999px; padding: 7px 12px;
+    font-family: var(--mono); font-size: 10px; color: var(--info);
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--info); animation: pulse 2s infinite; }
+  .status-dot.green { background: var(--ok); }
+  .status-dot.yellow { background: var(--warn); }
+  .status-dot.red { background: var(--accent); }
 
   /* ── FILTERBAR ── */
   .filterbar {
     display: flex; align-items: center; gap: 10px;
-    padding: 14px 16px;
+    padding: 12px 16px;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 14px;
-    box-shadow: var(--shadow);
     flex-wrap: wrap;
-    position: sticky; top: 70px; z-index: 99;
+    margin-bottom: 12px;
   }
   .flabel {
     font-size: 10px; color: var(--text3);
@@ -182,9 +187,8 @@
     position: relative; overflow: hidden;
     transition: transform .2s, box-shadow .2s, border-color .2s;
     animation: fadeUp .4s ease forwards;
-    box-shadow: var(--shadow);
   }
-  .kpi:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(0,0,0,.3); border-color: rgba(0,212,255,.2); }
+  .kpi:hover { transform: translateY(-2px); border-color: rgba(0,212,255,.2); }
   @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
   .kpi-bar  { position:absolute; top:0; left:0; width:3px; height:100%; border-radius:3px 0 0 3px; }
   .kpi-lbl  { font-size: 9px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .09em; margin-bottom: 8px; }
@@ -202,7 +206,6 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 14px; padding: 16px 16px 14px;
-    box-shadow: var(--shadow);
   }
   .chart-box.wide { grid-column: 1 / -1; }
   .chart-lbl {
@@ -222,7 +225,7 @@
   /* ── TABLE ── */
   .tcard {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: 14px; overflow: hidden; box-shadow: var(--shadow);
+    border-radius: 14px; overflow: hidden;
   }
   .thead-bar {
     display: flex; align-items: center; justify-content: space-between;
@@ -314,8 +317,6 @@
     .content { padding: 12px 0 20px; }
     #app { padding: 8px; }
     .topbar, .filterbar { border-radius: 14px; }
-    .topbar { top: 8px; }
-    .filterbar { top: 68px; }
     .logo-text { font-size: 14px; }
     .badge { display:none; }
   }
@@ -334,6 +335,10 @@
       </div>
     </div>
     <div class="spacer"></div>
+    <div class="status-pill" id="status-pill">
+      <span class="status-dot"></span>
+      <span id="status-label">Pronto</span>
+    </div>
     <div class="badge" id="badge-count">
       <i class="ti ti-database" style="font-size:11px;margin-right:4px;"></i>
       <span id="total-count">—</span> registros
@@ -377,6 +382,13 @@
     <button class="btn btn-ghost" id="btn-clear">
       <i class="ti ti-x" style="font-size:12px;"></i> Limpar
     </button>
+  </div>
+
+  <div class="info-bar">
+    <span>Período: <strong id="info-period">—</strong></span>
+    <span>Veículo: <strong id="info-vehicle">Todos</strong></span>
+    <span>Falha: <strong id="info-fault">Todas</strong></span>
+    <span>Busca: <strong id="info-search">—</strong></span>
   </div>
 
   <!-- CONTENT -->
@@ -517,6 +529,7 @@ geotab.addin.fault_dashboard = function(api, state) {
   loadDevices(fetchFaults);
   setupUI();
   setPreset('30d');
+  setUiStatus('Pronto', 'green');
 };
 
 // ── DEVICES ──
@@ -549,6 +562,7 @@ function loadDevices(onReady) {
 // ── FETCH ──
 function fetchFaults() {
   if (!devicesLoaded) { setLoadMsg('Carregando veículos...'); return; }
+  setUiStatus('Consultando...', 'yellow');
   showState('loading');
   document.getElementById('btn-fetch').disabled = true;
   var rng = getRange();
@@ -580,11 +594,13 @@ function fetchFaults() {
     applyFilters();
     if (allData.length === 0) { showState('empty'); }
     else { showState('data'); document.getElementById('btn-export').disabled = false; }
+    setUiStatus('Dados carregados', 'green');
   }, function(e) {
     document.getElementById('btn-fetch').disabled = false;
     document.getElementById('st-err-msg').textContent = typeof e === 'string' ? e : JSON.stringify(e);
     showState('error');
     console.error('[FD] fetch err', e);
+    setUiStatus('Erro', 'red');
   });
 }
 
@@ -633,6 +649,7 @@ function applyFilters() {
   });
   currentPage = 1;
   renderKPIs(); renderCharts(); renderTable();
+  updateInfoBar();
 }
 
 // ── KPIs ──
@@ -793,6 +810,37 @@ function showState(s){
 }
 function setLoadMsg(m){ document.getElementById('st-load-msg').textContent=m; }
 
+function setUiStatus(label, state) {
+  var lbl = document.getElementById('status-label');
+  var dot = document.querySelector('#status-pill .status-dot');
+  if (lbl) lbl.textContent = label;
+  if (dot) dot.className = 'status-dot ' + (state || '');
+}
+
+function updateInfoBar() {
+  var p = document.getElementById('info-period');
+  var v = document.getElementById('info-vehicle');
+  var f = document.getElementById('info-fault');
+  var s = document.getElementById('info-search');
+  if (p) {
+    var rng = getRange();
+    p.textContent = rng.from.toLocaleDateString('pt-BR') + ' → ' + rng.to.toLocaleDateString('pt-BR');
+  }
+  if (v) {
+    var selDev = document.getElementById('sel-device');
+    var opt = selDev && selDev.selectedOptions && selDev.selectedOptions[0];
+    v.textContent = opt && opt.value ? opt.textContent : 'Todos';
+  }
+  if (f) {
+    var selFault = document.getElementById('sel-fault');
+    f.textContent = selFault && selFault.value ? selFault.value : 'Todas';
+  }
+  if (s) {
+    var q = document.getElementById('inp-search').value.trim();
+    s.textContent = q ? q : '—';
+  }
+}
+
 function inferPlateLabel(device) {
   var plate = (device && device.licensePlate ? String(device.licensePlate) : '').trim();
   if (plate) return plate;
@@ -807,6 +855,7 @@ function setPreset(p){
   activePreset=p;
   document.querySelectorAll('.pbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.p===p); });
   document.getElementById('custom-dates').style.display = p==='custom' ? 'flex' : 'none';
+  updateInfoBar();
 }
 
 // ── EXPORT ──
@@ -826,6 +875,7 @@ document.getElementById('btn-export').addEventListener('click', function(){
 function setupUI(){
   document.querySelectorAll('.pbtn').forEach(function(b){ b.addEventListener('click',function(){ setPreset(b.dataset.p); }); });
   document.getElementById('btn-fetch').addEventListener('click', fetchFaults);
+  document.getElementById('sel-device').addEventListener('change', updateInfoBar);
   document.getElementById('inp-search').addEventListener('input', applyFilters);
   document.getElementById('sel-fault').addEventListener('change', applyFilters);
   document.getElementById('btn-clear').addEventListener('click',function(){
