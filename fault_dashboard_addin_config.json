@@ -1,7 +1,7 @@
 {
   "name": "Dashboard de Falhas — Frota",
-  "supportEmail": "seu-email@empresa.com",
-  "version": "1.0.0",
+  "supportEmail": "bruno@rotagyn.com.br",
+  "version": "3.0.0",
   "items": [
     {
       "page": "map",
