@@ -307,6 +307,20 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+
+  /* ── INFO BAR ── */
+  .info-bar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 8px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 11px; color: var(--text3);
+    flex-wrap: wrap;
+    margin-bottom: 2px;
+  }
+  .info-bar strong { color: var(--text2); font-weight: 600; }
+
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
@@ -966,6 +980,7 @@ if (isMockMode) {
   var mockApi={
     call:function(m,p,ok,err){
       if(p.typeName==='Device') ok([{id:'b1',name:'TEV9A14 | Daily 35'},{id:'b2',name:'FLT001 | Sprinter 415'},{id:'b3',name:'TEV8B22 | Transit 350'}]);
+      else if(p.typeName==='Diagnostic') ok([{id:'d1',name:'GPS failure fault',code:298},{id:'d2',name:'Engine overheat fault',code:512},{id:'d3',name:'Battery low voltage fault',code:101},{id:'d4',name:'Transmission fault',code:773},{id:'d5',name:'Door sensor fault',code:405}]);
       else if(p.typeName==='FaultData') ok([
         {device:{id:'b1'},dateTime:'2026-05-08T08:11:31Z',diagnostic:{id:'d1',name:'GPS failure fault',code:298},failureModeId:{id:'NoFailureModeId'},count:3},
         {device:{id:'b2'},dateTime:'2026-05-07T14:22:10Z',diagnostic:{id:'d2',name:'Engine overheat fault',code:512},failureModeId:{id:'NoFailureModeId'},count:1},
