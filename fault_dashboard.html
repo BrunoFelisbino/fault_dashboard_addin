@@ -349,7 +349,7 @@
     </button>
     <div class="fsep"></div>
     <!-- filtros locais -->
-    <input type="text" class="finput" id="inp-search" placeholder="Dispositivo, falha, código..." style="width:200px;">
+    <input type="text" class="finput" id="inp-search" placeholder="Placa, falha, código..." style="width:200px;">
     <select class="fselect" id="sel-fault" style="min-width:160px;">
       <option value="">Todas as falhas</option>
     </select>
@@ -432,7 +432,7 @@
       <div class="twrap">
         <table>
           <thead><tr>
-            <th data-col="deviceName">Dispositivo <span class="si">↕</span></th>
+            <th data-col="devicePlate">Placa <span class="si">↕</span></th>
             <th data-col="deviceName">Nome <span class="si">↕</span></th>
             <th data-col="dateTime">Data/Hora <span class="si">↕</span></th>
             <th data-col="diagnosticName">Tipo de falha <span class="si">↕</span></th>
@@ -486,37 +486,48 @@ var currentPage = 1, PAGE = 20;
 var sortCol = 'dateTime', sortDir = -1;
 var activePreset = '30d';
 var deviceMap = {};
+var devicesLoaded = false;
 var chType = null, chDev = null, chTime = null;
 var COLORS = ['#e84d3d','#4a9eff','#f5a623','#2ecc71','#9b59b6','#e67e22','#1abc9c','#e74c3c','#3498db','#f39c12','#16a085','#8e44ad'];
 
 // ── ENTRY POINT ──
 geotab.addin.fault_dashboard = function(api, state) {
   _api = api; _state = state;
-  loadDevices();
+  loadDevices(fetchFaults);
   setupUI();
   setPreset('30d');
-  fetchFaults();
 };
 
 // ── DEVICES ──
-function loadDevices() {
+function loadDevices(onReady) {
   _api.call('Get', { typeName: 'Device' }, function(devs) {
     deviceMap = {};
+    devicesLoaded = true;
     var sel = document.getElementById('sel-device');
     sel.innerHTML = '<option value="">Todos os veículos</option>';
     devs.filter(function(d){ return d.name; })
         .sort(function(a,b){ return a.name.localeCompare(b.name); })
         .forEach(function(d){
-          deviceMap[d.id] = d.name;
+          var plateLabel = inferPlateLabel(d);
+          deviceMap[d.id] = {
+            name: d.name,
+            plate: plateLabel
+          };
           var o = document.createElement('option');
-          o.value = d.id; o.textContent = d.name;
+          o.value = d.id; o.textContent = plateLabel;
           sel.appendChild(o);
         });
-  }, function(e){ console.warn('[FD] devices err', e); });
+    if (typeof onReady === 'function') onReady();
+  }, function(e){
+    console.warn('[FD] devices err', e);
+    devicesLoaded = true;
+    if (typeof onReady === 'function') onReady();
+  });
 }
 
 // ── FETCH ──
 function fetchFaults() {
+  if (!devicesLoaded) { setLoadMsg('Carregando veículos...'); return; }
   showState('loading');
   document.getElementById('btn-fetch').disabled = true;
   var rng = getRange();
@@ -530,9 +541,11 @@ function fetchFaults() {
     setLoadMsg('Processando ' + res.length + ' registros...');
     allData = res.map(function(r){
       var devId2 = r.device ? r.device.id : '';
+      var devInfo = deviceMap[devId2] || {};
       return {
         deviceId:       devId2,
-        deviceName:     deviceMap[devId2] || devId2 || '—',
+        deviceName:     devInfo.name || devId2 || '—',
+        devicePlate:    devInfo.plate || devId2 || '—',
         dateTime:       r.dateTime ? new Date(r.dateTime) : null,
         diagnosticId:   r.diagnostic ? r.diagnostic.id : '—',
         diagnosticName: r.diagnostic ? (r.diagnostic.name || r.diagnostic.id || '—') : '—',
@@ -585,7 +598,7 @@ function applyFilters() {
   filteredData = allData.filter(function(r){
     if (fault && r.diagnosticName !== fault) return false;
     if (srch) {
-      var blob = [r.deviceName, r.diagnosticName, r.diagnosticCode, r.failureMode].join(' ').toLowerCase();
+      var blob = [r.devicePlate, r.deviceName, r.diagnosticName, r.diagnosticCode, r.failureMode].join(' ').toLowerCase();
       if (blob.indexOf(srch) === -1) return false;
     }
     return true;
@@ -606,7 +619,7 @@ function renderKPIs() {
   var n = filteredData.length;
   set('kv-total', n.toLocaleString('pt-BR'));
   set('ks-total', n !== allData.length ? 'de '+allData.length.toLocaleString('pt-BR')+' total' : 'registros no período');
-  set('kv-dev', new Set(filteredData.map(function(r){return r.deviceId;})).size);
+  set('kv-dev', new Set(filteredData.map(function(r){return r.devicePlate || r.deviceId;})).size);
   set('kv-types', new Set(filteredData.map(function(r){return r.diagnosticName;})).size);
   var dates = filteredData.map(function(r){return r.dateTime;}).filter(Boolean).sort(function(a,b){return b-a;});
   set('kv-latest', dates[0] ? dates[0].toLocaleDateString('pt-BR') : '—');
@@ -651,7 +664,7 @@ function renderTypeChart(){
 
 function renderDevChart(){
   var counts={};
-  filteredData.forEach(function(r){ var n=r.deviceName!=='—'?r.deviceName:r.deviceId; counts[n]=(counts[n]||0)+1; });
+  filteredData.forEach(function(r){ var n=r.devicePlate!=='—'?r.devicePlate:(r.deviceName!=='—'?r.deviceName:r.deviceId); counts[n]=(counts[n]||0)+1; });
   var sorted=Object.entries(counts).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
   dc(chDev);
   chDev = new Chart(document.getElementById('ch-dev'),{
@@ -703,10 +716,11 @@ function renderTable(){
   } else {
     tbody.innerHTML=slice.map(function(r){
       var c=parseInt(r.diagnosticCode), sev=c>500?'r':c>200?'w':'i';
+      var plate=r.devicePlate.length>22?r.devicePlate.slice(0,22)+'…':r.devicePlate;
       var nm=r.deviceName.length>32?r.deviceName.slice(0,32)+'…':r.deviceName;
       return '<tr>'
-        +'<td title="'+esc(r.deviceName)+'"><strong style="color:var(--text);">'+esc(nm)+'</strong></td>'
-        +'<td title="'+esc(r.deviceId)+'"><span class="code" style="font-size:10px;color:var(--text3);">'+esc(r.deviceName!=='—'&&r.deviceName!==r.deviceId?r.deviceName:r.deviceId)+'</span></td>'
+        +'<td title="'+esc(r.devicePlate)+'"><strong style="color:var(--text);">'+esc(plate)+'</strong></td>'
+        +'<td title="'+esc(r.deviceName)+'"><span class="code" style="font-size:10px;color:var(--text3);">'+esc(nm)+'</span></td>'
         +'<td>'+fmtD(r.dateTime)+'</td>'
         +'<td><span class="bdg bdg-'+sev+'" title="'+esc(r.diagnosticName)+'">'+esc(r.diagnosticName.length>26?r.diagnosticName.slice(0,26)+'…':r.diagnosticName)+'</span></td>'
         +'<td><span class="code">'+esc(r.diagnosticCode)+'</span></td>'
@@ -758,6 +772,15 @@ function showState(s){
 }
 function setLoadMsg(m){ document.getElementById('st-load-msg').textContent=m; }
 
+function inferPlateLabel(device) {
+  var plate = (device && device.licensePlate ? String(device.licensePlate) : '').trim();
+  if (plate) return plate;
+  var name = (device && device.name ? String(device.name) : '').trim();
+  var match = name.match(/^([^|]+)\s*\|/);
+  if (match && match[1]) return match[1].trim();
+  return name || (device && device.id ? String(device.id) : '—');
+}
+
 // ── PRESET ──
 function setPreset(p){
   activePreset=p;
@@ -768,8 +791,8 @@ function setPreset(p){
 // ── EXPORT ──
 document.getElementById('btn-export').addEventListener('click', function(){
   if(!filteredData.length)return;
-  var cols=['deviceName','deviceId','dateTime','diagnosticName','diagnosticCode','failureMode','count'];
-  var hdr=['Dispositivo','DeviceId','Data/Hora','Tipo de falha','Código','Modo de falha','Ocorrências'];
+  var cols=['devicePlate','deviceName','dateTime','diagnosticName','diagnosticCode','failureMode','count'];
+  var hdr=['Placa','Nome','Data/Hora','Tipo de falha','Código','Modo de falha','Ocorrências'];
   var rows=filteredData.map(function(r){
     return cols.map(function(c){ var v=c==='dateTime'?fmtD(r[c]):String(r[c]??''); return v.indexOf('\t')>-1?'"'+v+'"':v; }).join('\t');
   });
@@ -822,7 +845,7 @@ if(typeof geotab==='undefined'){
     }
   };
   geotab = { addin: {} };
-  geotab.addin.fault_dashboard = function(api,state){ _api=api; _state=state; loadDevices(); setupUI(); setPreset('30d'); fetchFaults(); };
+  geotab.addin.fault_dashboard = function(api,state){ _api=api; _state=state; loadDevices(fetchFaults); setupUI(); setPreset('30d'); };
   geotab.addin.fault_dashboard(mockApi, {});
 }
 </script>
